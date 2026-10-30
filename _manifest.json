@@ -1,0 +1,15 @@
+{
+  "manifest_version": 2,
+  "id": "local.maibot-sillytavern",
+  "version": "0.1.0-alpha.1",
+  "name": "MaiBot SillyTavern Preset Bridge",
+  "description": "Experimental per-session RP preset overlay for MaiBot (SillyTavern JSON)",
+  "author": {"name": "MaiBot SillyTavern contributors"},
+  "license": "MIT",
+  "host_application": {"min_version": "1.3.0", "max_version": "1.3.99"},
+  "sdk": {"min_version": "2.10.0", "max_version": "2.16.99"},
+  "dependencies": [],
+  "plugin_type": "extension",
+  "capabilities": [],
+  "i18n": {"default_locale": "zh-CN", "supported_locales": ["zh-CN"]}
+}
