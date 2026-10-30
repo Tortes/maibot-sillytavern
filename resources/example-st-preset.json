@@ -1,0 +1,17 @@
+{
+  "prompts": [
+    {"identifier": "main", "name": "RP basics", "role": "system", "content": "你在群聊中扮演 {{char}}。说话自然，允许独立观点，不必每次都总结或反问。"},
+    {"identifier": "charDescription", "name": "Character Description", "role": "system", "marker": true},
+    {"identifier": "style", "name": "Dialogue style", "role": "system", "content": "对 {{user}} 说话时，根据关系和语境选择长短句。"},
+    {"identifier": "chatHistory", "name": "Chat History", "role": "user", "marker": true}
+  ],
+  "prompt_order": [{
+    "character_id": 100001,
+    "order": [
+      {"identifier": "main", "enabled": true},
+      {"identifier": "charDescription", "enabled": true},
+      {"identifier": "style", "enabled": true},
+      {"identifier": "chatHistory", "enabled": true}
+    ]
+  }]
+}
