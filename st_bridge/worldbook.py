@@ -443,13 +443,14 @@ def compile_worldbooks(
                 newly_activated.append(entry)
 
             if not newly_activated:
-                has_later_delayed_entries = any(
-                    (entry.get("delayUntilRecursion", False) is True
-                     or (type(entry.get("delayUntilRecursion")) is int
-                         and entry.get("delayUntilRecursion") > recursion_level))
-                    and (entry_source, entry["_source_uid"]) not in activated
-                    for entry, _, entry_source in candidates
-                )
+                has_later_delayed_entries = False
+                for candidate, _, candidate_source in candidates:
+                    delay_value = candidate.get("delayUntilRecursion", False)
+                    delay_level = delay_value if type(delay_value) is int else (1 if delay_value else 0)
+                    identity = (candidate_source, candidate["_source_uid"])
+                    if delay_level > recursion_level and identity not in activated:
+                        has_later_delayed_entries = True
+                        break
                 if has_later_delayed_entries and recursion_level < book_steps:
                     continue
                 break
