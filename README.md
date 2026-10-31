@@ -32,7 +32,7 @@ Not implemented yet:
 
 ### Important MaiBot mapping note
 
-MaiBot's current Replyer request contains a leading host system prompt, chat-history Context Items, and generated request-tail user prompts. This plugin keeps the leading host system prompt, inserts pre-history prompts after it, and places after-history prompts immediately before MaiBot's final current-time user block. Depth injection counts history Context Items and excludes recognizable/same-second request-tail prompts. This is a deliberate host adapter approximation, not a claim of byte-for-byte SillyTavern equivalence. Review the actual prompt with your model before enabling it in a live group.
+MaiBot's current Replyer request contains a leading host system prompt, chat-history Context Items, and generated request-tail user prompts. This plugin keeps the leading host system prompt, inserts pre-history prompts after it, and places after-history prompts immediately before MaiBot's current-time user block. The adapter recognizes MaiBot's current `时间：` marker as well as `当前时间：` and `Current time:`. It excludes known request-tail prompts by text markers rather than timestamp coincidence, so a real user message sent in the same second is not discarded from history depth. This is a deliberate host adapter approximation, not a claim of byte-for-byte SillyTavern equivalence. Review the actual prompt with your model before enabling it in a live group.
 
 ## Preview a preset
 
