@@ -278,6 +278,23 @@ class WorldbookTests(unittest.TestCase):
         self.assertFalse(result.before_character)
         self.assertTrue(any("vectorized activation is not implemented" in warning for warning in result.warnings))
 
+    def test_unsupported_activation_controls_are_skipped_safely(self):
+        data = book([
+            entry(1, key=["沙丘"], content="character filtered", characterFilter={"names": ["Other"]}),
+            entry(2, key=["沙丘"], content="sticky", sticky=3),
+            entry(3, key=["沙丘"], content="@@activate\nforced lore"),
+            entry(4, key=["沙丘"], content="persona scan", matchPersonaDescription=True),
+        ])
+        result = compile_worldbooks(
+            [data], [item("UserMessageItem", "沙丘", "u1")],
+        )
+        self.assertFalse(result.before_character)
+        joined = "\n".join(result.warnings)
+        self.assertIn("character-filtered entry skipped", joined)
+        self.assertIn("timed sticky/cooldown/delay entry skipped", joined)
+        self.assertIn("activation decorators are not implemented", joined)
+        self.assertIn("unsupported global scan source flag", joined)
+
     def test_invalid_worldbook_shape_is_rejected(self):
         with self.assertRaises(PresetError):
             normalize_worldbook({"name": "bad", "entries": "not-an-object"})
