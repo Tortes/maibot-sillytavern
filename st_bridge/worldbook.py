@@ -339,6 +339,9 @@ def compile_worldbooks(
             warnings.append(str(exc))
             continue
         book_entries = book["_normalized_entries"]
+        extensions = book.get("extensions")
+        if isinstance(extensions, dict) and (extensions.get("regex") or extensions.get("regex_scripts")):
+            warnings.append(f"{source}: imported regex extensions are not executed")
         candidates: list[tuple[dict[str, Any], int, str]] = []
         book_scan_depth = book.get("scanDepth")
         if book_scan_depth is not None and (
@@ -360,6 +363,27 @@ def compile_worldbooks(
                 continue
             if entry.get("group"):
                 warnings.append(f"{source} entry {entry['_source_uid']}: inclusion-group scoring is not implemented")
+            if entry.get("useGroupScoring"):
+                warnings.append(f"{source} entry {entry['_source_uid']}: group-scored entry skipped")
+                continue
+            if entry.get("characterFilter"):
+                warnings.append(f"{source} entry {entry['_source_uid']}: character-filtered entry skipped (no ST character identity mapping)")
+                continue
+            unsupported_scan_flags = (
+                "matchPersonaDescription", "matchCharacterDepthPrompt", "matchCreatorNotes",
+            )
+            if any(entry.get(flag) for flag in unsupported_scan_flags):
+                warnings.append(f"{source} entry {entry['_source_uid']}: unsupported global scan source flag; entry skipped")
+                continue
+            if any(entry.get(field) for field in ("sticky", "cooldown", "delay")):
+                warnings.append(f"{source} entry {entry['_source_uid']}: timed sticky/cooldown/delay entry skipped")
+                continue
+            content_header = str(entry.get("content") or "").lstrip().splitlines()[:3]
+            if any(line.startswith("@@activate") or line.startswith("@@dont_activate") for line in content_header):
+                warnings.append(f"{source} entry {entry['_source_uid']}: activation decorators are not implemented; entry skipped")
+                continue
+            if entry.get("ignoreBudget"):
+                warnings.append(f"{source} entry {entry['_source_uid']}: ignoreBudget is not supported; normal character budget applies")
             if entry.get("vectorized"):
                 warnings.append(f"{source} entry {entry['_source_uid']}: vectorized activation is not implemented; entry skipped")
                 continue
