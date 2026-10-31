@@ -14,16 +14,19 @@
 - Assistant prefill behind an explicit per-binding opt-in.
 - Compatibility matrix and expanded offline tests.
 
-## v0.3 — real-world preset validation
-- Differential Golden Test corpus against DSH Preset Enhance and SillyTavern.
-- Validate MaiBot SDK manifest compatibility against a pinned MaiBot release.
-- Improve request-tail detection and provider-specific role behavior.
-- Add imported character PNG metadata extraction.
+## v0.3 — bounded World Info / Lorebook import (current)
+- Standalone SillyTavern World Info JSON import.
+- Embedded V2 character_book import.
+- Primary/secondary keyword activation, constant/disabled entries, scan depth, matching options, probability.
+- Bounded recursive activation and before/after/depth placement.
+- CLI preview and offline fixtures.
 
-## v0.4 — character book / worldbook
-- Character Book V2 parsing.
-- Primary and secondary keyword activation.
-- Selective scan depth, insertion order, budget, and recursive activation.
+## v0.4 — compatibility and runtime validation
+- Differential Golden Test corpus against DSH Preset Enhance and SillyTavern.
+- Validate MaiBot SDK manifest compatibility against pinned MaiBot releases.
+- Live MaiBot/provider tests and provider-specific role behavior.
+- Character PNG metadata extraction.
+- Consider timed effects, inclusion-group scoring, and additional ST insertion positions.
 - Per-session worldbook state and explicit security limits.
 
 ## v0.5 — multi-chat operations
