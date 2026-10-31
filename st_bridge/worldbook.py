@@ -418,7 +418,7 @@ def compile_worldbooks(
                 if recursion_level > 0 and entry.get("excludeRecursion"):
                     continue
                 if entry.get("constant") is True:
-                    matched, warning = (recursion_level == 0), None
+                    matched, warning = True, None
                 else:
                     entry_depth = entry.get("scanDepth")
                     if entry_depth is None:
@@ -443,6 +443,15 @@ def compile_worldbooks(
                 newly_activated.append(entry)
 
             if not newly_activated:
+                has_later_delayed_entries = any(
+                    (entry.get("delayUntilRecursion", False) is True
+                     or (type(entry.get("delayUntilRecursion")) is int
+                         and entry.get("delayUntilRecursion") > recursion_level))
+                    and (entry_source, entry["_source_uid"]) not in activated
+                    for entry, _, entry_source in candidates
+                )
+                if has_later_delayed_entries and recursion_level < book_steps:
+                    continue
                 break
             if recursion_level < book_steps:
                 for entry in newly_activated:
