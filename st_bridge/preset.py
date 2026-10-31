@@ -270,7 +270,7 @@ def compile_preset(
         compiled = CompiledPrompt(
             identifier=identifier, role=role, text=expanded.strip(),
             injection_position=position, injection_depth=prompt.get("injection_depth", 4),
-            injection_order=prompt.get("injection_order", order_index),
+            injection_order=prompt.get("injection_order", 100),
         )
         if position == 1:
             depth_entries.append(compiled)
