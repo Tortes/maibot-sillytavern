@@ -66,7 +66,7 @@ class WorldbookTests(unittest.TestCase):
         self.assertIn("_character_book", character)
         result = compile_worldbooks(
             [character["_character_book"]],
-            [item("UserMessageItem", "你平时怎么冲洗胶片？", "u1")],
+            [item("UserMessageItem", "你平时怎么做胶片冲洗？我想看看暗房。", "u1")],
             character=character,
         )
         self.assertEqual(len(result.before_character), 1)
@@ -88,7 +88,7 @@ class WorldbookTests(unittest.TestCase):
 
     def test_scan_depth_uses_recent_user_and_assistant_messages(self):
         data = book([
-            entry(1, key=["旧地点"], content="旧消息命中", scanDepth=2),
+            entry(1, key=["旧地点"], content="旧消息命中", scanDepth=3),
             entry(2, key=["旧地点"], content="不应命中", scanDepth=1),
             entry(3, key=["新地点"], content="新消息命中", scanDepth=1),
         ])
