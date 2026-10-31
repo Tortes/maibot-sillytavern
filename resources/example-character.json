@@ -15,6 +15,36 @@
     "tags": ["test", "group-chat", "zh-CN"],
     "creator": "MaiBot × SillyTavern Bridge",
     "character_version": "1.0",
+    "character_book": {
+      "name": "阿澄的摄影设定",
+      "scanDepth": 2,
+      "recursiveScanning": false,
+      "entries": {
+        "0": {
+          "uid": 0,
+          "key": ["暗房", "胶片冲洗"],
+          "keysecondary": [],
+          "comment": "阿澄的暗房",
+          "content": "阿澄在家里有一间小暗房，会自己冲洗黑白胶片。她喜欢观察显影过程中影像慢慢浮现的过程。",
+          "constant": false,
+          "selective": false,
+          "selectiveLogic": 0,
+          "order": 100,
+          "position": 0,
+          "disable": false,
+          "probability": 100,
+          "useProbability": false,
+          "depth": 4,
+          "role": 0,
+          "scanDepth": null,
+          "caseSensitive": false,
+          "matchWholeWords": false,
+          "excludeRecursion": false,
+          "preventRecursion": false,
+          "delayUntilRecursion": false
+        }
+      }
+    },
     "extensions": {}
   }
 }
