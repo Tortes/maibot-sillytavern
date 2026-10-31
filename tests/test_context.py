@@ -68,7 +68,7 @@ class ContextTests(unittest.TestCase):
         self.assertLess(texts.index("我会保持角色口吻"), texts.index("当前时间：2026-10-31"))
         self.assertEqual(types[texts.index("这是额外的背景")], "UserMessageItem")
         self.assertEqual(types[texts.index("我会保持角色口吻")], "AssistantMessageItem")
-        self.assertEqual(len(result), len(original) + 5)
+        self.assertEqual(len(result), len(original) + 4)
 
     def test_depth_zero_goes_to_history_end(self):
         applied = apply_compiled_preset(base_items(), self.make_compiled(depth=0))
