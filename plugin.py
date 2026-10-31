@@ -45,7 +45,7 @@ class PresetBinding(PluginConfigBase):
     worldbook_file: str = Field(default="", description="可选：resources/ 下独立 World Info JSON 文件名")
     worldbook_scan_depth: int = Field(default=2, ge=0, le=1000, description="未指定条目扫描深度时，扫描最近 N 条用户/助手消息")
     worldbook_max_chars: int = Field(default=6000, ge=100, le=50000, description="每轮世界书注入的字符预算")
-    worldbook_recursive: bool = Field(default=False, description="覆盖世界书递归激活开关；世界书自身 recursiveScanning 优先")
+    worldbook_recursive: bool = Field(default=False, description="世界书未设置 recursiveScanning 时是否启用递归")
     worldbook_max_recursion_steps: int = Field(default=3, ge=0, le=5, description="递归扫描最大轮数")
     worldbook_case_sensitive: bool = Field(default=False, description="未指定条目选项时是否区分关键词大小写")
     worldbook_match_whole_words: bool = Field(default=False, description="未指定条目选项时是否要求整词匹配；中文建议关闭")
