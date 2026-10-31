@@ -2,7 +2,7 @@
 
 SillyTavern Chat Completion preset bridge for MaiBot Replyer. The goal is to use Tavern roleplay prompt presets in group chat while keeping MaiBot's Planner, memory, and tool pipeline host-owned.
 
-**Current status: experimental v0.2 development build.** Structured System/User/Assistant prompt insertion and depth injection are implemented with offline tests. Live MaiBot deployment and broad real-world preset compatibility still need validation.
+**Current status: experimental v0.2.0 development build.** Structured System/User/Assistant prompt insertion and depth injection are implemented with offline tests. Live MaiBot deployment and broad real-world preset compatibility still need validation.
 
 ## Current features
 
@@ -36,7 +36,7 @@ MaiBot's current Replyer request contains a leading host system prompt, chat-his
 
 ## Preview a preset
 
-Python 3.12+:
+Python 3.12+ and MaiBot Plugin SDK 2.20.0+ for host integration:
 
 ~~~bash
 python -m st_bridge.cli preview resources/example-st-preset.json --character resources/example-character.json
@@ -46,6 +46,8 @@ python -m unittest discover -s tests -v
 The preview shows the compiler's before-history, depth, after-history, and assistant-prefill sections. It does not require the MaiBot SDK.
 
 ## MaiBot installation (experimental)
+
+Targets MaiBot 1.3.x and Plugin SDK 2.20.x or newer (the manifest currently allows SDK 2.20.0–2.99.99).
 
 1. Copy/clone this plugin into the MaiBot plugin directory named maibot-sillytavern.
 2. Load it through MaiBot WebUI's plugin manager.
