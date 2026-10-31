@@ -1,6 +1,6 @@
 """Safe SillyTavern World Info / Lorebook importer and bounded activator.
 
-This implements a deliberately small, deterministic subset of ST World Info.
+This implements a deliberately small, bounded subset of ST World Info.
 It never executes imported scripts or regular-expression keys.
 """
 from __future__ import annotations
@@ -330,6 +330,7 @@ def compile_worldbooks(
     depth_entries: list[CompiledPrompt] = []
     included: list[str] = []
     total_used_chars = 0
+    activated_entries: list[tuple[dict[str, Any], str]] = []
     for book_index, raw_book in enumerate(books):
         source = str(raw_book.get("name") or f"worldbook-{book_index + 1}")
         try:
@@ -354,6 +355,7 @@ def compile_worldbooks(
             book_steps = 0
 
         for entry_index, entry in enumerate(book_entries):
+            entry["_book_index"] = book_index
             if entry.get("disable") is True:
                 continue
             if entry.get("group"):
@@ -423,55 +425,62 @@ def compile_worldbooks(
                         if content:
                             recursion_text.append(content)
 
-        # Select entries within the request-wide character budget. Constants and
-        # higher-order entries win budget first, matching ST's priority policy.
-        ordered_for_budget = sorted(
-            activated.items(),
-            key=lambda pair: (
-                0 if pair[1].get("constant") else 1,
-                -int(pair[1].get("order", 100)),
-                int(pair[1].get("_source_index", 0)),
-            ),
-        )
-        selected_entries: list[dict[str, Any]] = []
-        for _, entry in ordered_for_budget:
-            content, error = _expand(str(entry.get("content") or ""), macro_values)
-            if error:
-                warnings.append(f"{source} entry {entry['_source_uid']}: {error}; content skipped")
-                continue
-            if not content or not content.strip():
-                continue
-            if total_used_chars + len(content) > max_chars:
-                warnings.append(f"Worldbook character budget exhausted; skipped entry {entry['_source_uid']}")
-                continue
-            total_used_chars += len(content)
-            entry["_compiled_content"] = content.strip()
-            selected_entries.append(entry)
+        activated_entries.extend((entry, source) for entry in activated.values())
 
-        # ST processes high order first and unshifts each item, yielding low-to-high
-        # order in the final prompt. Keep stable source order for ties.
-        selected_entries.sort(key=lambda entry: (int(entry.get("order", 100)), int(entry.get("_source_index", 0))))
-        for entry in selected_entries:
-            uid = entry["_source_uid"]
-            identifier = f"worldbook:{source}:{uid}"
-            position = entry.get("position", 0)
-            content = entry["_compiled_content"]
-            if position in (POSITION_BEFORE_CHARACTER, POSITION_AFTER_CHARACTER):
-                prompt = CompiledPrompt(
-                    identifier=identifier, role="system", text=content,
-                    injection_position=0, injection_depth=4, injection_order=int(entry.get("order", 100)),
-                )
-                if position == POSITION_BEFORE_CHARACTER:
-                    before_entries.append(prompt)
-                else:
-                    after_entries.append(prompt)
-            elif position == POSITION_AT_DEPTH:
-                depth_entries.append(CompiledPrompt(
-                    identifier=identifier, role=entry.get("_role", "system"), text=content,
-                    injection_position=1, injection_depth=int(entry.get("depth", 4)),
-                    injection_order=int(entry.get("order", 100)),
-                ))
-            included.append(identifier)
+    # Apply one shared request budget across embedded and standalone books.
+    # Constant entries and larger order values have first claim on the budget.
+    ordered_for_budget = sorted(
+        activated_entries,
+        key=lambda pair: (
+            0 if pair[0].get("constant") else 1,
+            -int(pair[0].get("order", 100)),
+            int(pair[0].get("_book_index", 0)),
+            int(pair[0].get("_source_index", 0)),
+        ),
+    )
+    selected_entries: list[tuple[dict[str, Any], str]] = []
+    for entry, source in ordered_for_budget:
+        content, error = _expand(str(entry.get("content") or ""), macro_values)
+        if error:
+            warnings.append(f"{source} entry {entry['_source_uid']}: {error}; content skipped")
+            continue
+        if not content or not content.strip():
+            continue
+        if total_used_chars + len(content) > max_chars:
+            warnings.append(f"Worldbook character budget exhausted; skipped {source} entry {entry['_source_uid']}")
+            continue
+        total_used_chars += len(content)
+        entry["_compiled_content"] = content.strip()
+        selected_entries.append((entry, source))
+
+    # ST processes high order first and unshifts each item, yielding low-to-high
+    # order in the final prompt. Keep stable source order for ties.
+    selected_entries.sort(key=lambda pair: (
+        int(pair[0].get("order", 100)),
+        int(pair[0].get("_book_index", 0)),
+        int(pair[0].get("_source_index", 0)),
+    ))
+    for entry, source in selected_entries:
+        uid = entry["_source_uid"]
+        identifier = f"worldbook:{source}:{uid}"
+        position = entry.get("position", 0)
+        content = entry["_compiled_content"]
+        if position in (POSITION_BEFORE_CHARACTER, POSITION_AFTER_CHARACTER):
+            prompt = CompiledPrompt(
+                identifier=identifier, role="system", text=content,
+                injection_position=0, injection_depth=4, injection_order=int(entry.get("order", 100)),
+            )
+            if position == POSITION_BEFORE_CHARACTER:
+                before_entries.append(prompt)
+            else:
+                after_entries.append(prompt)
+        elif position == POSITION_AT_DEPTH:
+            depth_entries.append(CompiledPrompt(
+                identifier=identifier, role=entry.get("_role", "system"), text=content,
+                injection_position=1, injection_depth=int(entry.get("depth", 4)),
+                injection_order=int(entry.get("order", 100)),
+            ))
+        included.append(identifier)
 
     return WorldbookResult(
         before_character=tuple(before_entries),
