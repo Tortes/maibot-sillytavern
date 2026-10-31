@@ -169,6 +169,8 @@ def extract_history_macro_values(items: list[dict[str, Any]]) -> dict[str, str]:
         if not text:
             continue
         item_type = item.get("item_type")
+        if item_type not in ("UserMessageItem", "AssistantMessageItem"):
+            continue
         if not last_text:
             last_text = text
         if not user_text and item_type == "UserMessageItem":
@@ -207,7 +209,8 @@ def apply_compiled_preset(
 
     history_indices = [
         index for index in range(history_start, anchor)
-        if not _is_generated_tail(
+        if base[index].get("item_type") != "SystemMessageItem"
+        and not _is_generated_tail(
             base[index], anchor_time, reply_reason=reply_reason, reply_reference=reply_reference,
         )
     ]
