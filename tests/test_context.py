@@ -1,7 +1,7 @@
 from __future__ import annotations
 import unittest
 
-from st_bridge.context import apply_compiled_preset
+from st_bridge.context import apply_compiled_preset, extract_history_macro_values
 from st_bridge.preset import compile_preset
 
 
@@ -51,6 +51,12 @@ class ContextTests(unittest.TestCase):
             }],
         }
         return compile_preset(preset)
+
+    def test_history_macros_ignore_host_prompt_and_request_tail(self):
+        values = extract_history_macro_values(base_items())
+        self.assertEqual(values["lastmessage"], "沙丘")
+        self.assertEqual(values["lastusermessage"], "沙丘")
+        self.assertEqual(values["lastcharmessage"], "哪一部？")
 
     def test_roles_before_after_and_depth(self):
         original = base_items()
