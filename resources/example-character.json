@@ -9,6 +9,12 @@
     "mes_example": "群友：今晚又去拍照了？\n阿澄：嗯，顺路拍了几张。主要是想看看这座城市还能不能给我一点惊喜。",
     "first_mes": "你们今天聊什么？我刚从外面回来。",
     "creator_notes": "用于 MaiBot × SillyTavern Bridge 的本地注入冒烟测试。",
-    "tags": ["test", "group-chat", "zh-CN"]
+    "system_prompt": "",
+    "post_history_instructions": "",
+    "alternate_greetings": [],
+    "tags": ["test", "group-chat", "zh-CN"],
+    "creator": "MaiBot × SillyTavern Bridge",
+    "character_version": "1.0",
+    "extensions": {}
   }
 }
