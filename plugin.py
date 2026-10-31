@@ -61,8 +61,12 @@ class SillyTavernBridgePlugin(MaiBotPlugin):
         timeout_ms=3000,
     )
     async def on_replyer_before_model_request(self, **kwargs: Any) -> dict[str, Any] | None:
-        cfg = getattr(self, "config", None)
-        if cfg is None or not bool(getattr(getattr(cfg, "plugin", None), "enabled", False)):
+        try:
+            cfg = self.config
+        except RuntimeError:
+            log.debug("Plugin config is not injected yet; skipping preset hook")
+            return None
+        if not bool(getattr(getattr(cfg, "plugin", None), "enabled", False)):
             return None
 
         session_id = str(kwargs.get("session_id") or "")
