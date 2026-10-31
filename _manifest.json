@@ -1,15 +1,36 @@
 {
   "manifest_version": 2,
-  "id": "local.maibot-sillytavern",
-  "version": "0.2.0-alpha.1",
+  "id": "tortes.maibot-sillytavern",
+  "version": "0.2.0",
   "name": "MaiBot SillyTavern Preset Bridge",
-  "description": "Experimental role-aware SillyTavern preset bridge for MaiBot",
-  "author": {"name": "MaiBot SillyTavern contributors"},
+  "description": "将 SillyTavern RP 预设、角色卡提示词编排接入 MaiBot Replyer。",
+  "author": {
+    "name": "Tortes",
+    "url": "https://github.com/Tortes"
+  },
   "license": "MIT",
-  "host_application": {"min_version": "1.3.0", "max_version": "1.3.99"},
-  "sdk": {"min_version": "2.10.0", "max_version": "2.16.99"},
+  "urls": {
+    "repository": "https://github.com/Tortes/maibot-sillytavern",
+    "homepage": "https://github.com/Tortes/maibot-sillytavern",
+    "documentation": "https://github.com/Tortes/maibot-sillytavern#readme",
+    "issues": "https://github.com/Tortes/maibot-sillytavern/issues"
+  },
+  "host_application": {
+    "min_version": "1.3.0",
+    "max_version": "1.3.99"
+  },
+  "sdk": {
+    "min_version": "2.20.0",
+    "max_version": "2.99.99"
+  },
   "dependencies": [],
   "plugin_type": "extension",
   "capabilities": [],
-  "i18n": {"default_locale": "zh-CN", "supported_locales": ["zh-CN"]}
+  "i18n": {
+    "default_locale": "zh-CN",
+    "locales_path": "_locales",
+    "supported_locales": [
+      "zh-CN"
+    ]
+  }
 }
