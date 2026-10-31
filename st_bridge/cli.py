@@ -18,7 +18,7 @@ def main() -> int:
     preview.add_argument("--worldbook", type=Path, action="append", default=[])
     preview.add_argument("--scan-text", action="append", default=[], help="Chat message text to scan; may be repeated")
     preview.add_argument("--scan-depth", type=int, default=2)
-    preview.add_argument("--recursive", action="store_true")
+    preview.add_argument("--recursive", action="store_true", help="enable recursion when the book has no recursiveScanning setting")
     preview.add_argument("--worldbook-max-chars", type=int, default=6000)
     preview.add_argument("--user", default="群友")
     preview.add_argument("--char", default="")
