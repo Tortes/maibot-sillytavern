@@ -1,8 +1,11 @@
 from __future__ import annotations
 import unittest
+from pathlib import Path
 
 from st_bridge.context import apply_compiled_preset, extract_history_macro_values
-from st_bridge.preset import compile_preset
+from st_bridge.preset import compile_preset, load_character, load_preset
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def meta(item_id, timestamp="2026-10-30T10:00:00+08:00", turn=None):
@@ -25,7 +28,8 @@ def base_items():
         text_item("AssistantMessageItem", "a1", "哪一部？"),
         text_item("UserMessageItem", "u2", "沙丘"),
         text_item("UserMessageItem", "tail-style", "你的说话风格可以尝试：自然简短", now),
-        text_item("UserMessageItem", "final", "当前时间：2026-10-31 13:57:00", now),
+        text_item("UserMessageItem", "final", "时间：2026-10-31 13:57:00", now),
+        text_item("UserMessageItem", "tail-chat", "当前聊天额外注意事项：优先自然交流", now),
     ]
 
 
@@ -71,7 +75,7 @@ class ContextTests(unittest.TestCase):
         self.assertLess(texts.index("记住刚才的对话"), texts.index("沙丘"))
         self.assertLess(texts.index("沙丘"), texts.index("这是额外的背景"))
         self.assertLess(texts.index("这是额外的背景"), texts.index("我会保持角色口吻"))
-        self.assertLess(texts.index("我会保持角色口吻"), next(i for i, value in enumerate(texts) if value.startswith("当前时间：2026-10-31")))
+        self.assertLess(texts.index("我会保持角色口吻"), next(i for i, value in enumerate(texts) if value.startswith("时间：2026-10-31")))
         self.assertEqual(types[texts.index("这是额外的背景")], "UserMessageItem")
         self.assertEqual(types[texts.index("我会保持角色口吻")], "AssistantMessageItem")
         self.assertEqual(len(result), len(original) + 4)
@@ -80,7 +84,7 @@ class ContextTests(unittest.TestCase):
         applied = apply_compiled_preset(base_items(), self.make_compiled(depth=0))
         texts = [item.get("parts", [{}])[0].get("text", "") for item in applied.items]
         self.assertLess(texts.index("沙丘"), texts.index("记住刚才的对话"))
-        self.assertLess(texts.index("记住刚才的对话"), next(i for i, value in enumerate(texts) if value.startswith("当前时间：2026-10-31")))
+        self.assertLess(texts.index("记住刚才的对话"), next(i for i, value in enumerate(texts) if value.startswith("时间：2026-10-31")))
 
     def test_tool_call_turn_is_not_split(self):
         items = [
@@ -97,7 +101,7 @@ class ContextTests(unittest.TestCase):
                 "call_id": "call-1", "output": "结果", "success": True, "tool_name": "search",
             },
             text_item("UserMessageItem", "u2", "后来又聊了别的"),
-            text_item("UserMessageItem", "final", "当前时间：2026-10-31 13:57:00", "2026-10-31T13:57:00+08:00"),
+            text_item("UserMessageItem", "final", "时间：2026-10-31 13:57:00", "2026-10-31T13:57:00+08:00"),
         ]
         preset = {
             "prompts": [
@@ -144,6 +148,46 @@ class ContextTests(unittest.TestCase):
         second_ids = [x["meta"]["item_id"] for x in second.items if x["meta"]["item_id"].startswith("stpreset:")]
         self.assertEqual(len(first_ids), len(second_ids))
         self.assertEqual(len(second.items), len(first.items))
+
+    def test_sample_st_preset_injects_simulated_character_card(self):
+        preset = load_preset(ROOT / "resources" / "example-st-preset.json")
+        character = load_character(ROOT / "resources" / "example-character.json")
+        original = base_items()
+        macros = extract_history_macro_values(original)
+        compiled = compile_preset(
+            preset, character=character, user_name="小林", macro_values=macros,
+        )
+
+        applied = apply_compiled_preset(original, compiled)
+        item_texts = [
+            (item, "\n".join(
+                str(part.get("text", ""))
+                for part in item.get("parts", [])
+                if isinstance(part, dict) and part.get("type") == "text"
+            ))
+            for item in applied.items
+        ]
+        texts = [value for _, value in item_texts]
+
+        self.assertIn("你正在群聊中扮演 阿澄", texts)
+        self.assertIn(character["description"], texts)
+        self.assertIn(character["personality"], texts)
+        self.assertIn(character["scenario"], texts)
+        self.assertIn(character["mes_example"], texts)
+        self.assertIn("上一条用户发言是：沙丘", texts)
+        self.assertIn("本轮交流对象是 小林", texts)
+
+        depth_item = next(item for item, value in item_texts if value.startswith("上一条用户发言是："))
+        after_item = next(item for item, value in item_texts if value.startswith("本轮交流对象是"))
+        self.assertEqual(depth_item["item_type"], "AssistantMessageItem")
+        self.assertEqual(after_item["item_type"], "UserMessageItem")
+        self.assertLess(texts.index("你正在群聊中扮演 阿澄"), texts.index("昨晚看了电影"))
+        self.assertLess(texts.index("上一条用户发言是：沙丘"), texts.index("沙丘"))
+        self.assertLess(texts.index("沙丘"), texts.index("本轮交流对象是 小林"))
+        self.assertLess(texts.index("本轮交流对象是 小林"), next(
+            i for i, value in enumerate(texts) if value.startswith("时间：2026-10-31")
+        ))
+        self.assertNotIn("chatHistory", texts)
 
 if __name__ == "__main__":
     unittest.main()
