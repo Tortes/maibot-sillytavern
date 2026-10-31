@@ -70,6 +70,12 @@ class HookTests(unittest.TestCase):
         ))
         self.assertIsNone(unmatched)
 
+        unconfigured = SillyTavernBridgePlugin()
+        skipped = asyncio.run(unconfigured.on_replyer_before_model_request(
+            session_id="session-01", items=items, item_schema_version=schema_version,
+        ))
+        self.assertIsNone(skipped)
+
 
 if __name__ == "__main__":
     unittest.main()
