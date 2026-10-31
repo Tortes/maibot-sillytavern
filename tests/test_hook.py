@@ -10,7 +10,7 @@ class HookTests(unittest.TestCase):
     def test_exact_session_binding_and_structured_items(self):
         plugin = SillyTavernBridgePlugin()
         plugin.set_plugin_config({
-            "plugin": {"enabled": True},
+            "plugin": {"enabled": True, "config_version": "0.2.0"},
             "max_chars": 16000,
             "bindings": [{
                 "enabled": True,
