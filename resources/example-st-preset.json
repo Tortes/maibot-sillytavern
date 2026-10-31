@@ -1,17 +1,126 @@
 {
   "prompts": [
-    {"identifier": "main", "name": "RP basics", "role": "system", "content": "你在群聊中扮演 {{char}}。说话自然，允许独立观点，不必每次都总结或反问。"},
-    {"identifier": "charDescription", "name": "Character Description", "role": "system", "marker": true},
-    {"identifier": "style", "name": "Dialogue style", "role": "system", "content": "对 {{user}} 说话时，根据关系和语境选择长短句。"},
-    {"identifier": "chatHistory", "name": "Chat History", "role": "user", "marker": true}
+    {
+      "identifier": "main",
+      "name": "Main — 角色扮演规则",
+      "system_prompt": true,
+      "role": "system",
+      "content": "你正在群聊中扮演 {{char}}。你是群聊里的真实参与者，不要自称 AI；使用自然口语交流，允许简短回应、表达偏好和不同意见。对 {{user}} 保持熟悉但不过度亲昵。",
+      "enabled": true,
+      "marker": false,
+      "injection_position": 0,
+      "injection_depth": 4,
+      "injection_order": 100,
+      "injection_trigger": [],
+      "forbid_overrides": false
+    },
+    {
+      "identifier": "charDescription",
+      "name": "Card — Description",
+      "system_prompt": true,
+      "role": "system",
+      "content": "",
+      "enabled": true,
+      "marker": true,
+      "injection_position": 0,
+      "injection_depth": 4,
+      "injection_order": 100,
+      "injection_trigger": [],
+      "forbid_overrides": false
+    },
+    {
+      "identifier": "charPersonality",
+      "name": "Card — Personality",
+      "system_prompt": true,
+      "role": "system",
+      "content": "",
+      "enabled": true,
+      "marker": true,
+      "injection_position": 0,
+      "injection_depth": 4,
+      "injection_order": 100,
+      "injection_trigger": [],
+      "forbid_overrides": false
+    },
+    {
+      "identifier": "scenario",
+      "name": "Card — Scenario",
+      "system_prompt": true,
+      "role": "system",
+      "content": "",
+      "enabled": true,
+      "marker": true,
+      "injection_position": 0,
+      "injection_depth": 4,
+      "injection_order": 100,
+      "injection_trigger": [],
+      "forbid_overrides": false
+    },
+    {
+      "identifier": "dialogueExamples",
+      "name": "Card — Dialogue Examples",
+      "system_prompt": true,
+      "role": "system",
+      "content": "",
+      "enabled": true,
+      "marker": true,
+      "injection_position": 0,
+      "injection_depth": 4,
+      "injection_order": 100,
+      "injection_trigger": [],
+      "forbid_overrides": false
+    },
+    {
+      "identifier": "chatHistory",
+      "name": "Chat History",
+      "system_prompt": true,
+      "role": "user",
+      "content": "",
+      "enabled": true,
+      "marker": true
+    },
+    {
+      "identifier": "depthMemory",
+      "name": "Depth — 最近一条用户消息",
+      "system_prompt": false,
+      "role": "assistant",
+      "content": "上一条用户发言是：{{lastUserMessage}}。把它作为最近对话线索，不要机械复述。",
+      "enabled": true,
+      "marker": false,
+      "injection_position": 1,
+      "injection_depth": 1,
+      "injection_order": 10,
+      "injection_trigger": ["normal"],
+      "forbid_overrides": false
+    },
+    {
+      "identifier": "afterHistory",
+      "name": "After History — 当前交流对象",
+      "system_prompt": false,
+      "role": "user",
+      "content": "本轮交流对象是 {{user}}。只有在语境自然时才点名。",
+      "enabled": true,
+      "marker": false,
+      "injection_position": 0,
+      "injection_depth": 4,
+      "injection_order": 100,
+      "injection_trigger": [],
+      "forbid_overrides": false
+    }
   ],
-  "prompt_order": [{
-    "character_id": 100001,
-    "order": [
-      {"identifier": "main", "enabled": true},
-      {"identifier": "charDescription", "enabled": true},
-      {"identifier": "style", "enabled": true},
-      {"identifier": "chatHistory", "enabled": true}
-    ]
-  }]
+  "prompt_order": [
+    {
+      "character_id": 100001,
+      "order": [
+        {"identifier": "main", "enabled": true},
+        {"identifier": "charDescription", "enabled": true},
+        {"identifier": "charPersonality", "enabled": true},
+        {"identifier": "scenario", "enabled": true},
+        {"identifier": "dialogueExamples", "enabled": true},
+        {"identifier": "chatHistory", "enabled": true},
+        {"identifier": "depthMemory", "enabled": true},
+        {"identifier": "afterHistory", "enabled": true}
+      ]
+    }
+  ]
 }

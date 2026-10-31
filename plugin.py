@@ -90,6 +90,11 @@ class SillyTavernBridgePlugin(MaiBotPlugin):
                 character_path = safe_resource_path(RESOURCES, binding.character_file)
                 character = load_character(character_path)
 
+            reply_tool_args = kwargs.get("reply_tool_args")
+            reply_tool_args = reply_tool_args if isinstance(reply_tool_args, dict) else {}
+            reply_reason = str(kwargs.get("reply_reason") or "")
+            reply_reference = str(reply_tool_args.get("reply_reference") or "")
+
             compiled = compile_preset(
                 preset,
                 character=character,
@@ -97,17 +102,17 @@ class SillyTavernBridgePlugin(MaiBotPlugin):
                 char_name=binding.char_name,
                 character_id=binding.character_id or None,
                 trigger=binding.trigger,
-                macro_values=extract_history_macro_values(raw_items),
+                macro_values=extract_history_macro_values(
+                    raw_items, reply_reason=reply_reason, reply_reference=reply_reference,
+                ),
                 max_chars=cfg.max_chars,
             )
-            reply_tool_args = kwargs.get("reply_tool_args")
-            reply_tool_args = reply_tool_args if isinstance(reply_tool_args, dict) else {}
             applied = apply_compiled_preset(
                 raw_items,
                 compiled,
                 allow_assistant_prefill=binding.allow_assistant_prefill,
-                reply_reason=str(kwargs.get("reply_reason") or ""),
-                reply_reference=str(reply_tool_args.get("reply_reference") or ""),
+                reply_reason=reply_reason,
+                reply_reference=reply_reference,
             )
             for warning in applied.warnings:
                 log.warning("session=%s preset warning: %s", session_id, warning)

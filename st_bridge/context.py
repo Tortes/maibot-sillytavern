@@ -20,14 +20,18 @@ ROLE_TO_ITEM = {
     "user": "UserMessageItem",
     "assistant": "AssistantMessageItem",
 }
+CURRENT_TIME_PREFIXES = ("时间：", "当前时间：", "Current time:", "Time:")
 TAIL_PREFIXES = (
     "你的说话风格可以尝试：",
+    "时间：",
     "当前时间：",
     "请简短的回复",
     "可以针对问题做出较为详细的评论和说明",
     "【额外回复要求】",
     "【重生成约束】",
     "Current time:",
+    "Time:",
+    "当前聊天额外注意事项：",
 )
 
 
@@ -46,38 +50,21 @@ def _item_text(item: dict[str, Any]) -> str:
     )
 
 
-def _parse_timestamp(item: dict[str, Any]) -> datetime | None:
-    raw = item.get("meta", {}).get("timestamp")
-    if not isinstance(raw, str):
-        return None
-    try:
-        return datetime.fromisoformat(raw)
-    except ValueError:
-        return None
-
-
 def _is_generated_tail(
     item: dict[str, Any],
-    anchor_time: datetime | None,
     *,
     reply_reason: str = "",
     reply_reference: str = "",
 ) -> bool:
+    """Identify known request-tail prompts without guessing from timestamps.
+
+    Real user messages can share the request timestamp (especially in fast
+    chats), so timestamp equality must never be used as a proxy for provenance.
+    """
     text = _item_text(item).strip()
     if any(text.startswith(prefix) for prefix in TAIL_PREFIXES):
         return True
-    if text and (text == reply_reason.strip() or text == reply_reference.strip()):
-        return True
-    item_time = _parse_timestamp(item)
-    if item_time is not None and anchor_time is not None:
-        # MaiBot creates its temporary reply instructions immediately before the
-        # "当前时间" final user block. Same-second generated items are excluded
-        # from ST history depth; old IM messages keep their original timestamps.
-        left = item_time.replace(microsecond=0)
-        right = anchor_time.replace(microsecond=0)
-        if left == right and item.get("item_type") == "UserMessageItem":
-            return True
-    return False
+    return bool(text) and (text == reply_reason.strip() or text == reply_reference.strip())
 
 
 def _find_history_start(items: list[dict[str, Any]]) -> int:
@@ -93,7 +80,7 @@ def _find_current_prompt_anchor(items: list[dict[str, Any]]) -> int:
         if item.get("item_type") != "UserMessageItem":
             continue
         text = _item_text(item).lstrip()
-        if text.startswith("当前时间：") or text.startswith("Current time:"):
+        if any(text.startswith(prefix) for prefix in CURRENT_TIME_PREFIXES):
             return index
     return len(items)
 
@@ -156,14 +143,15 @@ def _new_prefill(text: str) -> dict[str, Any]:
     return _new_context_item(prompt)
 
 
-def extract_history_macro_values(items: list[dict[str, Any]]) -> dict[str, str]:
+def extract_history_macro_values(
+    items: list[dict[str, Any]], *, reply_reason: str = "", reply_reference: str = "",
+) -> dict[str, str]:
     anchor = _find_current_prompt_anchor(items)
-    anchor_time = _parse_timestamp(items[anchor]) if anchor < len(items) else None
     user_text = ""
     assistant_text = ""
     last_text = ""
     for item in reversed(items[:anchor]):
-        if _is_generated_tail(item, anchor_time):
+        if _is_generated_tail(item, reply_reason=reply_reason, reply_reference=reply_reference):
             continue
         text = _item_text(item).strip()
         if not text:
@@ -205,13 +193,12 @@ def apply_compiled_preset(
     ]
     history_start = _find_history_start(base)
     anchor = _find_current_prompt_anchor(base)
-    anchor_time = _parse_timestamp(base[anchor]) if anchor < len(base) else None
 
     history_indices = [
         index for index in range(history_start, anchor)
         if base[index].get("item_type") != "SystemMessageItem"
         and not _is_generated_tail(
-            base[index], anchor_time, reply_reason=reply_reason, reply_reference=reply_reference,
+            base[index], reply_reason=reply_reason, reply_reference=reply_reference,
         )
     ]
 
