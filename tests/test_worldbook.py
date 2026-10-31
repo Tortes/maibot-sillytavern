@@ -238,6 +238,15 @@ class WorldbookTests(unittest.TestCase):
         self.assertEqual(texts, ["c" * 60])
         self.assertTrue(any("budget exhausted" in warning for warning in result.warnings))
 
+    def test_shared_budget_prioritizes_constant_across_multiple_books(self):
+        first = book([entry(1, key=["沙丘"], content="x" * 60, order=999)], name="character-book")
+        second = book([entry(2, constant=True, content="c" * 60, order=1)], name="external-book")
+        result = compile_worldbooks(
+            [first, second], [item("UserMessageItem", "沙丘", "u1")], max_chars=100,
+        )
+        self.assertEqual([p.text for p in result.before_character], ["c" * 60])
+        self.assertTrue(any("external-book" in value for value in result.activated))
+
     def test_regex_keys_are_skipped_with_warning(self):
         data = book([entry(1, key=["/.*沙丘.*/"], content="regex should not run")])
         result = compile_worldbooks(
