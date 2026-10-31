@@ -65,7 +65,7 @@ class ContextTests(unittest.TestCase):
         self.assertLess(texts.index("记住刚才的对话"), texts.index("沙丘"))
         self.assertLess(texts.index("沙丘"), texts.index("这是额外的背景"))
         self.assertLess(texts.index("这是额外的背景"), texts.index("我会保持角色口吻"))
-        self.assertLess(texts.index("我会保持角色口吻"), texts.index("当前时间：2026-10-31"))
+        self.assertLess(texts.index("我会保持角色口吻"), next(i for i, value in enumerate(texts) if value.startswith("当前时间：2026-10-31")))
         self.assertEqual(types[texts.index("这是额外的背景")], "UserMessageItem")
         self.assertEqual(types[texts.index("我会保持角色口吻")], "AssistantMessageItem")
         self.assertEqual(len(result), len(original) + 4)
