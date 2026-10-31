@@ -62,6 +62,14 @@ class ContextTests(unittest.TestCase):
         self.assertEqual(values["lastusermessage"], "沙丘")
         self.assertEqual(values["lastcharmessage"], "哪一部？")
 
+    def test_history_macros_include_current_user_message_after_time_tail(self):
+        items = base_items()
+        items.append(text_item("UserMessageItem", "current", "我想聊沙丘", "2026-10-31T13:57:00+08:00"))
+        values = extract_history_macro_values(items)
+        self.assertEqual(values["lastmessage"], "我想聊沙丘")
+        self.assertEqual(values["lastusermessage"], "我想聊沙丘")
+        self.assertEqual(values["lastcharmessage"], "哪一部？")
+
     def test_history_macros_ignore_explicit_reply_tail_text(self):
         now = "2026-10-31T13:57:00+08:00"
         items = base_items()
