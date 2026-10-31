@@ -180,6 +180,19 @@ class WorldbookTests(unittest.TestCase):
         self.assertIn("香料引来沙虫", texts)
         self.assertNotIn("递归排除内容", texts)
 
+    def test_delayed_entries_are_scanned_even_without_initial_activation(self):
+        data = book([
+            entry(1, key=["沙丘"], content="delayed keyword lore", delayUntilRecursion=True),
+            entry(2, constant=True, content="delayed constant lore", delayUntilRecursion=True),
+        ], recursiveScanning=True)
+        result = compile_worldbooks(
+            [data], [item("UserMessageItem", "沙丘", "u1")],
+            max_recursion_steps=2,
+        )
+        texts = [p.text for p in result.before_character]
+        self.assertIn("delayed keyword lore", texts)
+        self.assertIn("delayed constant lore", texts)
+
     def test_prevent_recursion_stops_entry_content_from_triggering_more_entries(self):
         data = book([
             entry(1, key=["沙丘"], content="这里提到了香料", preventRecursion=True),
