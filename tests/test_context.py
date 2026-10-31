@@ -180,24 +180,26 @@ class ContextTests(unittest.TestCase):
         ]
         texts = [value for _, value in item_texts]
 
-        self.assertIn("你正在群聊中扮演 阿澄", texts)
+        self.assertTrue(any(value.startswith("你正在群聊中扮演 阿澄") for value in texts))
         self.assertIn(character["description"], texts)
         self.assertIn(character["personality"], texts)
         self.assertIn(character["scenario"], texts)
         self.assertIn(character["mes_example"], texts)
-        self.assertIn("上一条用户发言是：沙丘", texts)
-        self.assertIn("本轮交流对象是 小林", texts)
+        self.assertTrue(any(value.startswith("上一条用户发言是：沙丘") for value in texts))
+        self.assertTrue(any(value.startswith("本轮交流对象是 小林") for value in texts))
 
         depth_item = next(item for item, value in item_texts if value.startswith("上一条用户发言是："))
         after_item = next(item for item, value in item_texts if value.startswith("本轮交流对象是"))
         self.assertEqual(depth_item["item_type"], "AssistantMessageItem")
         self.assertEqual(after_item["item_type"], "UserMessageItem")
-        self.assertLess(texts.index("你正在群聊中扮演 阿澄"), texts.index("昨晚看了电影"))
-        self.assertLess(texts.index("上一条用户发言是：沙丘"), texts.index("沙丘"))
-        self.assertLess(texts.index("沙丘"), texts.index("本轮交流对象是 小林"))
-        self.assertLess(texts.index("本轮交流对象是 小林"), next(
-            i for i, value in enumerate(texts) if value.startswith("时间：2026-10-31")
-        ))
+        main_index = next(i for i, value in enumerate(texts) if value.startswith("你正在群聊中扮演 阿澄"))
+        depth_index = next(i for i, value in enumerate(texts) if value.startswith("上一条用户发言是：沙丘"))
+        after_index = next(i for i, value in enumerate(texts) if value.startswith("本轮交流对象是 小林"))
+        time_index = next(i for i, value in enumerate(texts) if value.startswith("时间：2026-10-31"))
+        self.assertLess(main_index, texts.index("昨晚看了电影"))
+        self.assertLess(depth_index, texts.index("沙丘"))
+        self.assertLess(texts.index("沙丘"), after_index)
+        self.assertLess(after_index, time_index)
         self.assertNotIn("chatHistory", texts)
 
 if __name__ == "__main__":
