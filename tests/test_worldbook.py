@@ -278,6 +278,16 @@ class WorldbookTests(unittest.TestCase):
         self.assertFalse(result.before_character)
         self.assertTrue(any("vectorized activation is not implemented" in warning for warning in result.warnings))
 
+    def test_empty_character_filter_does_not_disable_entry(self):
+        data = book([entry(
+            1, key=["沙丘"], content="unfiltered lore",
+            characterFilter={"names": [], "tags": []},
+        )])
+        result = compile_worldbooks(
+            [data], [item("UserMessageItem", "沙丘", "u1")],
+        )
+        self.assertEqual([p.text for p in result.before_character], ["unfiltered lore"])
+
     def test_unsupported_activation_controls_are_skipped_safely(self):
         data = book([
             entry(1, key=["沙丘"], content="character filtered", characterFilter={"names": ["Other"]}),
