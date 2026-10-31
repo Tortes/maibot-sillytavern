@@ -35,7 +35,7 @@ class PresetBinding(PluginConfigBase):
     character_file: str = Field(default="example-character.json", description="resources/ 下角色 JSON 文件名；留空表示不用")
     user_name: str = Field(default="群友")
     char_name: str = Field(default="", description="可选：覆盖角色昵称")
-    character_id: str = Field(default="100001", description="选择 ST prompt_order 中的 character_id")
+    character_id: str = Field(default="", description="可选：选择 ST prompt_order 中的 character_id；留空时自动选择默认组")
     trigger: str = Field(default="normal", description="ST injection_trigger，本版本默认 normal")
     allow_assistant_prefill: bool = Field(default=False, description="仅在已验证模型支持 assistant 前缀续写后启用")
     enabled: bool = Field(default=True)
