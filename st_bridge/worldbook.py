@@ -366,7 +366,12 @@ def compile_worldbooks(
             if entry.get("useGroupScoring"):
                 warnings.append(f"{source} entry {entry['_source_uid']}: group-scored entry skipped")
                 continue
-            if entry.get("characterFilter"):
+            character_filter = entry.get("characterFilter")
+            has_character_filter = (
+                bool(character_filter.get("names") or character_filter.get("tags"))
+                if isinstance(character_filter, dict) else bool(character_filter)
+            )
+            if has_character_filter:
                 warnings.append(f"{source} entry {entry['_source_uid']}: character-filtered entry skipped (no ST character identity mapping)")
                 continue
             unsupported_scan_flags = (
