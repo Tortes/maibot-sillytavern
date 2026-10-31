@@ -18,18 +18,28 @@ class PresetTests(unittest.TestCase):
 
     def test_prompt_order_marker_and_macro(self):
         compiled = compile_preset(self.preset, character=self.character, user_name="喵喵")
-        self.assertEqual(compiled.included, ("main", "charDescription", "style"))
-        self.assertEqual(len(compiled.before_history), 3)
-        self.assertFalse(compiled.after_history)
+        self.assertEqual(
+            compiled.included,
+            ("main", "charDescription", "charPersonality", "scenario", "dialogueExamples", "depthMemory", "afterHistory"),
+        )
+        self.assertEqual(len(compiled.before_history), 5)
+        self.assertEqual(len(compiled.depth_entries), 1)
+        self.assertEqual(len(compiled.after_history), 1)
         preview = build_overlay(self.preset, character=self.character, user_name="喵喵")
-        self.assertLess(preview.text.index("你在群聊"), preview.text.index("阿澄性格"))
-        self.assertLess(preview.text.index("阿澄性格"), preview.text.index("对 喵喵 说话"))
+        self.assertLess(preview.text.index("你正在群聊中"), preview.text.index("阿澄性格"))
+        self.assertIn("冷幽默", preview.text)
+        self.assertIn("摄影", preview.text)
+        self.assertIn("对 喵喵", preview.text)
         self.assertNotIn("{{", preview.text)
 
     def test_disabled_prompt_skipped(self):
-        self.preset["prompt_order"][0]["order"][2]["enabled"] = False
+        entry = next(
+            item for item in self.preset["prompt_order"][0]["order"]
+            if item["identifier"] == "charPersonality"
+        )
+        entry["enabled"] = False
         compiled = compile_preset(self.preset, character=self.character)
-        self.assertNotIn("style", compiled.included)
+        self.assertNotIn("charPersonality", compiled.included)
 
     def test_unknown_macro_skips_entry(self):
         self.preset["prompts"][0]["content"] = "{{setvar::foo::bar}}"
@@ -55,9 +65,11 @@ class PresetTests(unittest.TestCase):
             {"identifier": "after", "enabled": True},
         ])
         compiled = compile_preset(self.preset, character=self.character)
-        self.assertEqual(compiled.depth_entries[0].role, "assistant")
-        self.assertEqual(compiled.depth_entries[0].injection_depth, 3)
-        self.assertEqual(compiled.after_history[0].role, "user")
+        added_depth = next(item for item in compiled.depth_entries if item.identifier == "depth")
+        added_after = next(item for item in compiled.after_history if item.identifier == "after")
+        self.assertEqual(added_depth.role, "assistant")
+        self.assertEqual(added_depth.injection_depth, 3)
+        self.assertEqual(added_after.role, "user")
 
     def test_explicit_character_order_group(self):
         preset = {
@@ -74,6 +86,21 @@ class PresetTests(unittest.TestCase):
         self.assertEqual(compile_preset(preset, character_id=42).included, ("b",))
         with self.assertRaises(PresetError):
             compile_preset(preset, character_id=99)
+
+    def test_null_depth_and_order_use_defaults(self):
+        preset = {
+            "prompts": [{
+                "identifier": "depth",
+                "role": "assistant",
+                "content": "depth prompt",
+                "injection_position": 1,
+                "injection_depth": None,
+                "injection_order": None,
+            }],
+        }
+        compiled = compile_preset(preset)
+        self.assertEqual(compiled.depth_entries[0].injection_depth, 4)
+        self.assertEqual(compiled.depth_entries[0].injection_order, 100)
 
     def test_duplicate_ids_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
