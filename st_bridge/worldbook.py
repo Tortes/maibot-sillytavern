@@ -84,11 +84,12 @@ def normalize_worldbook(data: Mapping[str, Any], *, source: str = "worldbook") -
     entries: list[dict[str, Any]] = []
     seen_uids: set[str] = set()
     total_chars = 0
-    for key, raw in rows:
+    for source_index, (key, raw) in enumerate(rows):
         if not isinstance(raw, dict):
             raise PresetError(f"{source}: entry {key!r} must be an object")
         entry = dict(raw)
-        entry.setdefault("uid", key)
+        if entry.get("uid") is None:
+            entry["uid"] = key
         content = entry.get("content", "")
         if not isinstance(content, str):
             raise PresetError(f"{source}: entry {key!r} content must be text")
@@ -151,6 +152,7 @@ def normalize_worldbook(data: Mapping[str, Any], *, source: str = "worldbook") -
         else:
             raise PresetError(f"{source}: entry {key!r} has unsupported role")
         entry["_source_uid"] = str(entry.get("uid", key))
+        entry["_source_index"] = source_index
         if entry["_source_uid"] in seen_uids:
             raise PresetError(f"{source}: duplicate entry uid {entry['_source_uid']!r}")
         seen_uids.add(entry["_source_uid"])
@@ -416,14 +418,14 @@ def compile_worldbooks(
                         if content:
                             recursion_text.append(content)
 
-        # Select entries within the per-book character budget. Constants and
+        # Select entries within the request-wide character budget. Constants and
         # higher-order entries win budget first, matching ST's priority policy.
         ordered_for_budget = sorted(
             activated.items(),
             key=lambda pair: (
                 0 if pair[1].get("constant") else 1,
                 -int(pair[1].get("order", 100)),
-                str(pair[0][1]),
+                int(pair[1].get("_source_index", 0)),
             ),
         )
         selected_entries: list[dict[str, Any]] = []
@@ -443,7 +445,7 @@ def compile_worldbooks(
 
         # ST processes high order first and unshifts each item, yielding low-to-high
         # order in the final prompt. Keep stable source order for ties.
-        selected_entries.sort(key=lambda entry: (int(entry.get("order", 100)), str(entry["_source_uid"])))
+        selected_entries.sort(key=lambda entry: (int(entry.get("order", 100)), int(entry.get("_source_index", 0))))
         for entry in selected_entries:
             uid = entry["_source_uid"]
             identifier = f"worldbook:{source}:{uid}"
