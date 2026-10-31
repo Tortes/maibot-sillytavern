@@ -6,6 +6,7 @@ tool definitions, and MaiBot's own system identity remain host-owned.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -16,9 +17,11 @@ from maibot_sdk.types import HookMode, HookOrder
 try:
     from .st_bridge.context import apply_compiled_preset, extract_history_macro_values
     from .st_bridge.preset import compile_preset, load_character, load_preset, safe_resource_path
+    from .st_bridge.worldbook import compile_worldbooks, load_worldbook
 except ImportError:
     from st_bridge.context import apply_compiled_preset, extract_history_macro_values
     from st_bridge.preset import compile_preset, load_character, load_preset, safe_resource_path
+    from st_bridge.worldbook import compile_worldbooks, load_worldbook
 
 log = logging.getLogger("maibot.plugin.sillytavern")
 RESOURCES = Path(__file__).resolve().parent / "resources"
@@ -26,7 +29,7 @@ RESOURCES = Path(__file__).resolve().parent / "resources"
 
 class PluginSwitch(PluginConfigBase):
     enabled: bool = Field(default=False, description="显式启用实验性预设注入")
-    config_version: str = Field(default="0.2.0")
+    config_version: str = Field(default="0.3.0")
 
 
 class PresetBinding(PluginConfigBase):
@@ -38,6 +41,14 @@ class PresetBinding(PluginConfigBase):
     character_id: str = Field(default="", description="可选：选择 ST prompt_order 中的 character_id；留空时自动选择默认组")
     trigger: str = Field(default="normal", description="ST injection_trigger，本版本默认 normal")
     allow_assistant_prefill: bool = Field(default=False, description="仅在已验证模型支持 assistant 前缀续写后启用")
+    worldbook_enabled: bool = Field(default=True, description="启用角色卡内嵌及独立 ST 世界书")
+    worldbook_file: str = Field(default="", description="可选：resources/ 下独立 World Info JSON 文件名")
+    worldbook_scan_depth: int = Field(default=2, ge=0, le=1000, description="未指定条目扫描深度时，扫描最近 N 条用户/助手消息")
+    worldbook_max_chars: int = Field(default=6000, ge=100, le=50000, description="每轮世界书注入的字符预算")
+    worldbook_recursive: bool = Field(default=False, description="覆盖世界书递归激活开关；世界书自身 recursiveScanning 优先")
+    worldbook_max_recursion_steps: int = Field(default=3, ge=0, le=5, description="递归扫描最大轮数")
+    worldbook_case_sensitive: bool = Field(default=False, description="未指定条目选项时是否区分关键词大小写")
+    worldbook_match_whole_words: bool = Field(default=False, description="未指定条目选项时是否要求整词匹配；中文建议关闭")
     enabled: bool = Field(default=True)
 
 
@@ -95,6 +106,9 @@ class SillyTavernBridgePlugin(MaiBotPlugin):
             reply_reason = str(kwargs.get("reply_reason") or "")
             reply_reference = str(reply_tool_args.get("reply_reference") or "")
 
+            macro_values = extract_history_macro_values(
+                raw_items, reply_reason=reply_reason, reply_reference=reply_reference,
+            )
             compiled = compile_preset(
                 preset,
                 character=character,
@@ -102,11 +116,59 @@ class SillyTavernBridgePlugin(MaiBotPlugin):
                 char_name=binding.char_name,
                 character_id=binding.character_id or None,
                 trigger=binding.trigger,
-                macro_values=extract_history_macro_values(
-                    raw_items, reply_reason=reply_reason, reply_reference=reply_reference,
-                ),
+                macro_values=macro_values,
                 max_chars=cfg.max_chars,
             )
+
+            worldbook_warnings: list[str] = []
+            if binding.worldbook_enabled:
+                books: list[dict[str, Any]] = []
+                embedded_book = (character or {}).get("_character_book")
+                if isinstance(embedded_book, dict):
+                    books.append(embedded_book)
+                if binding.worldbook_file:
+                    try:
+                        worldbook_path = safe_resource_path(RESOURCES, binding.worldbook_file)
+                        books.append(load_worldbook(worldbook_path))
+                    except Exception as exc:
+                        worldbook_warnings.append(f"Could not load worldbook {binding.worldbook_file!r}: {exc}")
+                        log.warning("session=%s worldbook load failed: %s", session_id, exc)
+
+                if books:
+                    lore = compile_worldbooks(
+                        books,
+                        raw_items,
+                        character=character,
+                        user_name=binding.user_name,
+                        char_name=binding.char_name,
+                        macro_values=macro_values,
+                        scan_depth=binding.worldbook_scan_depth,
+                        max_chars=binding.worldbook_max_chars,
+                        recursive=binding.worldbook_recursive,
+                        max_recursion_steps=binding.worldbook_max_recursion_steps,
+                        case_sensitive=binding.worldbook_case_sensitive,
+                        match_whole_words=binding.worldbook_match_whole_words,
+                        reply_reason=reply_reason,
+                        reply_reference=reply_reference,
+                    )
+                    compiled = replace(
+                        compiled,
+                        before_history=(
+                            lore.before_character + compiled.before_history + lore.after_character
+                        ),
+                        depth_entries=tuple(sorted(
+                            compiled.depth_entries + lore.depth_entries,
+                            key=lambda item: item.injection_order,
+                        )),
+                        warnings=compiled.warnings + lore.warnings,
+                        included=compiled.included + lore.activated,
+                    )
+            elif (character or {}).get("_character_book"):
+                worldbook_warnings.append("Embedded character book is present but worldbook_enabled is false")
+
+            if worldbook_warnings:
+                compiled = replace(compiled, warnings=compiled.warnings + tuple(worldbook_warnings))
+
             applied = apply_compiled_preset(
                 raw_items,
                 compiled,
