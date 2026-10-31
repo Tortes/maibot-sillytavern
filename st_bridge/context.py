@@ -158,10 +158,13 @@ def _new_prefill(text: str) -> dict[str, Any]:
 
 def extract_history_macro_values(items: list[dict[str, Any]]) -> dict[str, str]:
     anchor = _find_current_prompt_anchor(items)
+    anchor_time = _parse_timestamp(items[anchor]) if anchor < len(items) else None
     user_text = ""
     assistant_text = ""
     last_text = ""
     for item in reversed(items[:anchor]):
+        if _is_generated_tail(item, anchor_time):
+            continue
         text = _item_text(item).strip()
         if not text:
             continue
