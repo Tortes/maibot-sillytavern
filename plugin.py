@@ -1,10 +1,11 @@
-"""MaiBot plugin adapter: safe ST preset overlay at before_model_request.
+"""MaiBot adapter for role-aware SillyTavern preset injection.
 
-Requires an installed MaiBot SDK at runtime; CLI/tests do not import this file.
+The plugin changes only the Replyer request Context Items. Planner, memories,
+tool definitions, and MaiBot's own system identity remain host-owned.
 """
 from __future__ import annotations
+
 import logging
-from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -13,50 +14,40 @@ from maibot_sdk import HookHandler, MaiBotPlugin, PluginConfigBase
 from maibot_sdk.types import HookMode, HookOrder
 
 try:
-    from .st_bridge.preset import build_overlay, load_character, load_preset, safe_resource_path
-except ImportError:  # standalone preview/test import
-    from st_bridge.preset import build_overlay, load_character, load_preset, safe_resource_path
+    from .st_bridge.context import apply_compiled_preset, extract_history_macro_values
+    from .st_bridge.preset import compile_preset, load_character, load_preset, safe_resource_path
+except ImportError:
+    from st_bridge.context import apply_compiled_preset, extract_history_macro_values
+    from st_bridge.preset import compile_preset, load_character, load_preset, safe_resource_path
 
 log = logging.getLogger("maibot.plugin.sillytavern")
 RESOURCES = Path(__file__).resolve().parent / "resources"
-TAG = "【SillyTavern Preset Overlay — experimental】"
+
 
 class PluginSwitch(PluginConfigBase):
     enabled: bool = Field(default=False, description="显式启用实验性预设注入")
-    config_version: str = Field(default="0.1.0")
+    config_version: str = Field(default="0.2.0")
+
 
 class PresetBinding(PluginConfigBase):
-    session_id: str = Field(default="", description="MaiBot 的 session_id，不是 QQ 群号")
+    session_id: str = Field(default="", description="MaiBot 的精确 session_id，不是 QQ 群号")
     preset_file: str = Field(default="example-st-preset.json", description="resources/ 下 JSON 文件名")
     character_file: str = Field(default="example-character.json", description="resources/ 下角色 JSON 文件名；留空表示不用")
     user_name: str = Field(default="群友")
     char_name: str = Field(default="", description="可选：覆盖角色昵称")
+    character_id: str = Field(default="100001", description="选择 ST prompt_order 中的 character_id")
+    trigger: str = Field(default="normal", description="ST injection_trigger，本版本默认 normal")
+    allow_assistant_prefill: bool = Field(default=False, description="仅在已验证模型支持 assistant 前缀续写后启用")
     enabled: bool = Field(default=True)
+
 
 class PresetBridgeConfig(PluginConfigBase):
     plugin: PluginSwitch = Field(default_factory=PluginSwitch)
     bindings: list[PresetBinding] = Field(default_factory=list, description="按精确 session_id 绑定预设")
     max_chars: int = Field(default=16000, ge=500, le=20000)
 
+
 PresetBridgeConfig.model_rebuild()
-
-
-def append_system_overlay(items: list[dict[str, Any]], text: str) -> list[dict[str, Any]] | None:
-    """Only patch an existing system item so MaiBot's metadata/tools/history survive."""
-    if not text:
-        return None
-    copied = deepcopy(items)
-    for item in copied:
-        if not isinstance(item, dict) or item.get("item_type") != "SystemMessageItem":
-            continue
-        parts = item.get("parts")
-        if not isinstance(parts, list):
-            continue
-        if any(isinstance(part, dict) and TAG in str(part.get("text", "")) for part in parts):
-            return None  # avoid duplicate on one request
-        parts.append({"type": "text", "text": "\n\n" + TAG + "\n" + text})
-        return copied
-    return None
 
 
 class SillyTavernBridgePlugin(MaiBotPlugin):
@@ -64,7 +55,7 @@ class SillyTavernBridgePlugin(MaiBotPlugin):
 
     @HookHandler(
         "maisaka.replyer.before_model_request",
-        name="sillytavern_preset_overlay",
+        name="sillytavern_preset_bridge",
         mode=HookMode.BLOCKING,
         order=HookOrder.LATE,
         timeout_ms=3000,
@@ -73,31 +64,58 @@ class SillyTavernBridgePlugin(MaiBotPlugin):
         cfg = getattr(self, "config", None)
         if cfg is None or not bool(getattr(getattr(cfg, "plugin", None), "enabled", False)):
             return None
-        sid = str(kwargs.get("session_id") or "")
-        bindings = [b for b in getattr(cfg, "bindings", []) if b.enabled and str(b.session_id) == sid]
-        if not sid or not bindings:
+
+        session_id = str(kwargs.get("session_id") or "")
+        bindings = [
+            binding for binding in getattr(cfg, "bindings", [])
+            if binding.enabled and str(binding.session_id) == session_id
+        ]
+        if not session_id or not bindings:
             return None
+
         binding = bindings[0]
-        items = kwargs.get("items")
-        if not isinstance(items, list):
+        raw_items = kwargs.get("items")
+        if not isinstance(raw_items, list):
             return None
+
         try:
-            preset = load_preset(safe_resource_path(RESOURCES, binding.preset_file))
-            character = load_character(safe_resource_path(RESOURCES, binding.character_file)) if binding.character_file else None
-            preview = build_overlay(
-                preset, character=character, user_name=binding.user_name,
-                char_name=binding.char_name, max_chars=cfg.max_chars,
+            preset_path = safe_resource_path(RESOURCES, binding.preset_file)
+            preset = load_preset(preset_path)
+            character = None
+            if binding.character_file:
+                character_path = safe_resource_path(RESOURCES, binding.character_file)
+                character = load_character(character_path)
+
+            compiled = compile_preset(
+                preset,
+                character=character,
+                user_name=binding.user_name,
+                char_name=binding.char_name,
+                character_id=binding.character_id or None,
+                trigger=binding.trigger,
+                macro_values=extract_history_macro_values(raw_items),
+                max_chars=cfg.max_chars,
             )
-            for warning in preview.warnings:
-                log.warning("preset session=%s: %s", sid, warning)
-            patched = append_system_overlay(items, preview.text)
-            if patched is None:
+            reply_tool_args = kwargs.get("reply_tool_args")
+            reply_tool_args = reply_tool_args if isinstance(reply_tool_args, dict) else {}
+            applied = apply_compiled_preset(
+                raw_items,
+                compiled,
+                allow_assistant_prefill=binding.allow_assistant_prefill,
+                reply_reason=str(kwargs.get("reply_reason") or ""),
+                reply_reference=str(reply_tool_args.get("reply_reference") or ""),
+            )
+            for warning in applied.warnings:
+                log.warning("session=%s preset warning: %s", session_id, warning)
+            if not applied.inserted:
                 return None
-            modified = dict(kwargs)
-            modified["items"] = patched
-            return {"action": "continue", "modified_kwargs": modified}
-        except Exception as exc:
-            log.warning("SillyTavern preset skipped for session=%s: %s", sid, exc)
+
+            modified_kwargs = dict(kwargs)
+            modified_kwargs["items"] = applied.items
+            # item_schema_version is intentionally preserved from the host payload.
+            return {"action": "continue", "modified_kwargs": modified_kwargs}
+        except Exception:
+            log.exception("SillyTavern preset compilation failed for session=%s; using host prompt", session_id)
             return None
 
 
