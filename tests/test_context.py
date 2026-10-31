@@ -74,7 +74,7 @@ class ContextTests(unittest.TestCase):
         applied = apply_compiled_preset(base_items(), self.make_compiled(depth=0))
         texts = [item.get("parts", [{}])[0].get("text", "") for item in applied.items]
         self.assertLess(texts.index("沙丘"), texts.index("记住刚才的对话"))
-        self.assertLess(texts.index("记住刚才的对话"), texts.index("当前时间：2026-10-31"))
+        self.assertLess(texts.index("记住刚才的对话"), next(i for i, value in enumerate(texts) if value.startswith("当前时间：2026-10-31")))
 
     def test_tool_call_turn_is_not_split(self):
         items = [
