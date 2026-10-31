@@ -1,57 +1,81 @@
-"""Hook payload test without importing the live MaiBot SDK."""
+"""MaiBot hook adapter tests using the published SDK."""
 from __future__ import annotations
-import importlib
 import asyncio
-from types import SimpleNamespace
-import sys
-import types
 import unittest
 
+from plugin import SillyTavernBridgePlugin
+
+
 class HookTests(unittest.TestCase):
-    def test_preserves_metadata_and_multimodal(self):
-        # The production SDK isn't installed for standalone test; stub its decorators.
-        mod = types.ModuleType("maibot_sdk")
-        class Base: pass
-        mod.MaiBotPlugin = Base
-        mod.PluginConfigBase = object
-        mod.HookHandler = lambda *args, **kwargs: (lambda fn: fn)
-        types_mod = types.ModuleType("maibot_sdk.types")
-        types_mod.HookMode = types.SimpleNamespace(BLOCKING="blocking")
-        types_mod.HookOrder = types.SimpleNamespace(LATE="late")
-        sys.modules["maibot_sdk"] = mod
-        sys.modules["maibot_sdk.types"] = types_mod
-        try:
-            from pydantic import BaseModel
-            mod.PluginConfigBase = BaseModel
-            plugin = importlib.import_module("plugin")
-            items = [
-                {"item_type": "SystemMessageItem", "meta": {"item_id":"abc", "logical_turn_id":None, "timestamp":"2026-10-30T00:00:00+00:00"}, "parts":[{"type":"text", "text":"base"}]},
-                {"item_type": "UserMessageItem", "meta": {"item_id":"def", "logical_turn_id":None, "timestamp":"2026-10-30T00:00:00+00:00"}, "parts":[{"type":"image", "image_base64":"abc", "image_format":"png"}]},
-            ]
-            result = plugin.append_system_overlay(items, "角色设定")
-            self.assertEqual(result[0]["meta"], items[0]["meta"])
-            self.assertEqual(result[1], items[1])
-            self.assertEqual(len(items[0]["parts"]), 1)  # no mutation of original
-            self.assertIsNone(plugin.append_system_overlay(result, "角色设定"))
-            obj = plugin.SillyTavernBridgePlugin()
-            obj.config = SimpleNamespace(
-                plugin=SimpleNamespace(enabled=True),
-                max_chars=16000,
-                bindings=[SimpleNamespace(
-                    enabled=True, session_id="session-01", preset_file="example-st-preset.json",
-                    character_file="example-character.json", user_name="群友", char_name=""
-                )],
-            )
-            outgoing = asyncio.run(obj.on_replyer_before_model_request(session_id="session-01", items=items))
-            self.assertEqual(outgoing["action"], "continue")
-            merged = outgoing["modified_kwargs"]["items"]
-            self.assertIn("阿澄", merged[0]["parts"][-1]["text"])
-            self.assertEqual(merged[1], items[1])
-            self.assertIsNone(asyncio.run(obj.on_replyer_before_model_request(session_id="other", items=items)))
-        finally:
-            sys.modules.pop("plugin", None)
-            sys.modules.pop("maibot_sdk", None)
-            sys.modules.pop("maibot_sdk.types", None)
+    def test_exact_session_binding_and_structured_items(self):
+        plugin = SillyTavernBridgePlugin()
+        plugin.set_plugin_config({
+            "plugin": {"enabled": True, "config_version": "0.2.0"},
+            "max_chars": 16000,
+            "bindings": [{
+                "enabled": True,
+                "session_id": "session-01",
+                "preset_file": "example-st-preset.json",
+                "character_file": "example-character.json",
+                "user_name": "喵喵",
+                "char_name": "",
+                "character_id": "100001",
+                "trigger": "normal",
+                "allow_assistant_prefill": False,
+            }],
+        })
+        items = [
+            {
+                "item_type": "SystemMessageItem",
+                "meta": {"item_id": "sys", "logical_turn_id": None, "timestamp": "2026-10-30T00:00:00+00:00"},
+                "parts": [{"type": "text", "text": "MaiBot host system prompt"}],
+            },
+            {
+                "item_type": "UserMessageItem",
+                "meta": {"item_id": "history", "logical_turn_id": None, "timestamp": "2026-10-30T00:01:00+00:00"},
+                "parts": [{"type": "text", "text": "以前聊过摄影"}],
+            },
+            {
+                "item_type": "UserMessageItem",
+                "meta": {"item_id": "final", "logical_turn_id": None, "timestamp": "2026-10-31T13:57:00+08:00"},
+                "parts": [{"type": "text", "text": "当前时间：2026-10-31 13:57:00"}],
+            },
+        ]
+        schema_version = 1
+        result = asyncio.run(plugin.on_replyer_before_model_request(
+            session_id="session-01",
+            items=items,
+            item_schema_version=schema_version,
+            reply_reason="自然回复",
+            reply_tool_args={},
+        ))
+        self.assertEqual(result["action"], "continue")
+        modified = result["modified_kwargs"]
+        self.assertEqual(modified["item_schema_version"], schema_version)
+        self.assertEqual(modified["session_id"], "session-01")
+        output = modified["items"]
+        texts = [
+            part.get("text", "")
+            for item in output
+            for part in item.get("parts", [])
+            if part.get("type") == "text"
+        ]
+        self.assertIn("阿澄性格慢热", "\n".join(texts))
+        self.assertEqual(output[0]["meta"]["item_id"], "sys")
+        self.assertEqual(output[-1]["meta"]["item_id"], "final")
+        self.assertEqual(items[0]["parts"][0]["text"], "MaiBot host system prompt")
+
+        unmatched = asyncio.run(plugin.on_replyer_before_model_request(
+            session_id="another-session", items=items, item_schema_version=schema_version,
+        ))
+        self.assertIsNone(unmatched)
+
+        unconfigured = SillyTavernBridgePlugin()
+        skipped = asyncio.run(unconfigured.on_replyer_before_model_request(
+            session_id="session-01", items=items, item_schema_version=schema_version,
+        ))
+        self.assertIsNone(skipped)
+
 
 if __name__ == "__main__":
     unittest.main()

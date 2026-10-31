@@ -1,45 +1,96 @@
-# MaiBot × SillyTavern (experimental MVP)
+# MaiBot × SillyTavern
 
-A safety-first bridge for **SillyTavern Chat Completion preset JSON** in MaiBot's replyer. Target: group-chat roleplay without replacing MaiBot Planner, memory, or tool pipeline.
+SillyTavern Chat Completion preset bridge for MaiBot Replyer. The goal is to use Tavern roleplay prompt presets in group chat while keeping MaiBot's Planner, memory, and tool pipeline host-owned.
 
-**Status:** experimental alpha, not a full SillyTavern implementation. Offline tests pass; **live MaiBot integration remains unverified**.
+**Current status: experimental v0.2.0 development build.** Structured System/User/Assistant prompt insertion and depth injection are implemented with offline tests. Live MaiBot deployment and broad real-world preset compatibility still need validation.
 
-## MVP supports
+## Current features
 
-- Load ST Chat Completion JSON with `prompts` and `prompt_order`.
-- Read V2 / flat exported character-card JSON.
-- Respect order and enabled flags; expand a fixed subset of safe macros (char, user, description, personality, scenario, mesExamples).
-- Inject an overlay through `maisaka.replyer.before_model_request` by appending to an **existing system Context Item**, preserving metadata, conversation history, images, and tool-related items.
-- Bind one preset to an exact MaiBot **session_id**, disabled by default.
-- Offline CLI preview, explicit compatibility warnings, and unit tests.
+- Load SillyTavern Chat Completion preset JSON and DSH Preset Enhance share wrappers.
+- Parse flat and V2-style exported character-card JSON.
+- Respect prompt order, enabled flags, role, injection position/depth/order, and injection triggers.
+- Treat the chatHistory marker as a before/after-history boundary.
+- Insert separate MaiBot SystemMessageItem, UserMessageItem, and AssistantMessageItem snapshots rather than flattening all prompts into one system string.
+- Keep existing Context Items, image parts, provider items, and tool-call/result turns intact; depth insertion moves outside a tool-call turn.
+- Support a safe macro subset: char, user, description, personality, scenario, mesExamples, lastMessage, lastUserMessage, lastCharMessage, newline, noop.
+- Exact session_id binding; plugin disabled by default.
+- Assistant prefill is opt-in per binding and disabled by default.
+- CLI prompt-plan preview, warnings for unsupported features, and unit tests / GitHub Actions.
 
-## Important limitations
+## Compatibility boundaries
 
-This MVP **does not** preserve exact ST role boundaries or depth injection. User prompts are flattened into a system overlay. It does not implement worldbooks, regex execution, script processing, setvar/getvar, assistant prefill, sampler settings, PNG metadata extraction, or automatic group ID mapping. Unsupported macros skip the affected prompt with a warning.
+This is not a complete SillyTavern runtime. See docs/COMPATIBILITY.md.
 
-## Preview locally
+Not implemented yet:
+- Worldbook / character_book parsing and keyword/secondary-keyword activation.
+- PNG card metadata extraction; use an exported JSON card for now.
+- Tavern JavaScript extensions, EJS, arbitrary scripts, and imported regex execution.
+- Full Tavern macro language and persistent local/global variable state.
+- Exact role/position behavior for every provider and every preset.
+- Sampler settings (temperature, top-p, min-p, etc.); configure these in MaiBot's model provider.
+- Automatic QQ group ID to MaiBot session_id discovery.
 
-Run from repository root (Python 3.12+):
+### Important MaiBot mapping note
+
+MaiBot's current Replyer request contains a leading host system prompt, chat-history Context Items, and generated request-tail user prompts. This plugin keeps the leading host system prompt, inserts pre-history prompts after it, and places after-history prompts immediately before MaiBot's final current-time user block. Depth injection counts history Context Items and excludes recognizable/same-second request-tail prompts. This is a deliberate host adapter approximation, not a claim of byte-for-byte SillyTavern equivalence. Review the actual prompt with your model before enabling it in a live group.
+
+## Preview a preset
+
+Python 3.12+ and MaiBot Plugin SDK 2.20.0+ for host integration:
 
 ~~~bash
 python -m st_bridge.cli preview resources/example-st-preset.json --character resources/example-character.json
 python -m unittest discover -s tests -v
 ~~~
 
-## Experimental MaiBot installation
+The preview shows the compiler's before-history, depth, after-history, and assistant-prefill sections. It does not require the MaiBot SDK.
 
-Clone into your MaiBot `plugins/maibot-sillytavern` directory and load it using MaiBot WebUI. Enable `plugin.enabled` explicitly, then add a `bindings` entry for the **exact internal session_id**. Use `preset_file=example-st-preset.json` and `character_file=example-character.json` as a smoke test. Preset JSON and exported character JSON are read only from the plugin's `resources/` directory.
+## MaiBot installation (experimental)
 
-Before opening the bot to actual groups, inspect the outgoing prompt and verify injection once without changing the Planner. Use only trusted card files; the imported prompts must never be allowed to authorize tool execution.
+Targets MaiBot 1.3.x and Plugin SDK 2.20.x or newer (the manifest currently allows SDK 2.20.0–2.99.99).
 
-## Development roadmap
+1. Copy/clone this plugin into the MaiBot plugin directory named maibot-sillytavern.
+2. Load it through MaiBot WebUI's plugin manager.
+3. Keep the global plugin switch disabled until configuration is complete.
+4. Put exported preset and character JSON files under this plugin's resources directory.
+5. Enable plugin.enabled, then create a binding for the exact internal MaiBot session_id. Leave character_id blank for automatic prompt-order group selection unless a specific group is required.
+6. Keep allow_assistant_prefill=false unless the selected provider/model has been tested with assistant-prefix continuation.
+7. Inspect a real outgoing request in a private test session before using a public group.
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Priorities: Golden tests vs. SillyTavern / DSH Preset Enhance, structured role/depth injection, lorebook matching, chat-group binding and debug UI.
+Example binding fields:
+
+~~~toml
+[[bindings]]
+session_id = "exact-maibot-session-id"
+preset_file = "example-st-preset.json"
+character_file = "example-character.json"
+user_name = "群友"
+char_name = ""
+character_id = ""
+trigger = "normal"
+allow_assistant_prefill = false
+enabled = true
+~~~
+
+The actual config wrapper is generated by the installed MaiBot SDK. The plugin's global plugin.enabled switch must also be true.
+
+## Security
+
+- Imported card/preset files are treated as untrusted data.
+- No eval, JavaScript, EJS, arbitrary scripts, or imported regex scripts are executed.
+- Unsupported macros skip the affected prompt with a warning instead of being sent literally.
+- Resource paths are restricted to single JSON filenames under resources/.
+- Preset text is prompt content, not authority: it must not grant tool permissions or override host-side tool policy.
+- Do not expose MaiBot tools, filesystem access, credentials, or private memories to untrusted group members.
+
+## Development
+
+See docs/ROADMAP.md and docs/COMPATIBILITY.md. The next major milestone is a Golden Test corpus generated from the same presets and history in SillyTavern / DSH Preset Enhance and MaiBot, followed by worldbook activation.
 
 ## References
 
-- [MaiBot](https://github.com/Mai-with-u/MaiBot) (host)
-- [DSH Preset Enhance](https://github.com/bychv/dsh-preset-enhance) (inspiration)
-- [MaiBot GroupPersona](https://github.com/beichen24a1/MaiBot-GroupPersona) (group binding inspiration)
+- MaiBot: https://github.com/Mai-with-u/MaiBot
+- DSH Preset Enhance: https://github.com/bychv/dsh-preset-enhance
+- SillyTavern documentation: https://docs.sillytavern.app/
 
-All code in this repository is independently written. See LICENSE (MIT).
+MIT License. This project is an independent adapter and is not affiliated with SillyTavern or MaiBot.

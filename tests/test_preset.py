@@ -5,10 +5,11 @@ import unittest
 from pathlib import Path
 
 from st_bridge.preset import (
-    PresetError, build_overlay, load_character, load_preset, safe_resource_path,
+    PresetError, build_overlay, compile_preset, load_character, load_preset, safe_resource_path,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+
 
 class PresetTests(unittest.TestCase):
     def setUp(self):
@@ -16,37 +17,70 @@ class PresetTests(unittest.TestCase):
         self.character = load_character(ROOT / "resources/example-character.json")
 
     def test_prompt_order_marker_and_macro(self):
-        p = build_overlay(self.preset, character=self.character, user_name="喵喵")
-        self.assertEqual(p.included, ("main", "charDescription", "style"))
-        self.assertLess(p.text.index("你在群聊"), p.text.index("阿澄性格"))
-        self.assertLess(p.text.index("阿澄性格"), p.text.index("对 喵喵 说话"))
-        self.assertNotIn("{{", p.text)
-        self.assertFalse(any("chatHistory" in s for s in p.warnings))
+        compiled = compile_preset(self.preset, character=self.character, user_name="喵喵")
+        self.assertEqual(compiled.included, ("main", "charDescription", "style"))
+        self.assertEqual(len(compiled.before_history), 3)
+        self.assertFalse(compiled.after_history)
+        preview = build_overlay(self.preset, character=self.character, user_name="喵喵")
+        self.assertLess(preview.text.index("你在群聊"), preview.text.index("阿澄性格"))
+        self.assertLess(preview.text.index("阿澄性格"), preview.text.index("对 喵喵 说话"))
+        self.assertNotIn("{{", preview.text)
 
     def test_disabled_prompt_skipped(self):
         self.preset["prompt_order"][0]["order"][2]["enabled"] = False
-        p = build_overlay(self.preset, character=self.character)
-        self.assertNotIn("style", p.included)
+        compiled = compile_preset(self.preset, character=self.character)
+        self.assertNotIn("style", compiled.included)
 
     def test_unknown_macro_skips_entry(self):
         self.preset["prompts"][0]["content"] = "{{setvar::foo::bar}}"
-        p = build_overlay(self.preset, character=self.character)
-        self.assertNotIn("main", p.included)
-        self.assertTrue(any("Unsupported macro" in s for s in p.warnings))
+        compiled = compile_preset(self.preset, character=self.character)
+        self.assertNotIn("main", compiled.included)
+        self.assertTrue(any("Unsupported macro" in warning for warning in compiled.warnings))
 
-    def test_assistant_prefill_flagged_and_skipped(self):
-        self.preset["prompts"].append({"identifier": "prefix", "role": "assistant", "content": "你好"})
-        self.preset["prompt_order"][0]["order"].append({"identifier": "prefix", "enabled": True})
-        p = build_overlay(self.preset, character=self.character)
-        self.assertNotIn("prefix", p.included)
-        self.assertTrue(any("prefill" in s for s in p.warnings))
+    def test_assistant_prefill_compiled(self):
+        self.preset["assistant_prefill"] = "{{char}}:"
+        compiled = compile_preset(self.preset, character=self.character)
+        self.assertEqual(compiled.assistant_prefill, "阿澄:")
+
+    def test_role_and_depth_metadata_preserved(self):
+        self.preset["prompts"].append({
+            "identifier": "depth", "role": "assistant", "content": "回到刚才的话题",
+            "injection_position": 1, "injection_depth": 3, "injection_order": 7,
+        })
+        self.preset["prompts"].append({
+            "identifier": "after", "role": "user", "content": "补充上下文",
+        })
+        self.preset["prompt_order"][0]["order"].extend([
+            {"identifier": "depth", "enabled": True},
+            {"identifier": "after", "enabled": True},
+        ])
+        compiled = compile_preset(self.preset, character=self.character)
+        self.assertEqual(compiled.depth_entries[0].role, "assistant")
+        self.assertEqual(compiled.depth_entries[0].injection_depth, 3)
+        self.assertEqual(compiled.after_history[0].role, "user")
+
+    def test_explicit_character_order_group(self):
+        preset = {
+            "prompts": [
+                {"identifier": "a", "content": "default"},
+                {"identifier": "b", "content": "other"},
+            ],
+            "prompt_order": [
+                {"character_id": 100001, "order": [{"identifier": "a", "enabled": True}]},
+                {"character_id": 42, "order": [{"identifier": "b", "enabled": True}]},
+            ],
+        }
+        self.assertEqual(compile_preset(preset).included, ("a",))
+        self.assertEqual(compile_preset(preset, character_id=42).included, ("b",))
+        with self.assertRaises(PresetError):
+            compile_preset(preset, character_id=99)
 
     def test_duplicate_ids_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
-            f = Path(tmp) / "bad.json"
-            f.write_text(json.dumps({"prompts": [{"identifier": "x"}, {"identifier": "x"}]}))
+            path = Path(tmp) / "bad.json"
+            path.write_text(json.dumps({"prompts": [{"identifier": "x"}, {"identifier": "x"}]}))
             with self.assertRaises(PresetError):
-                load_preset(f)
+                load_preset(path)
 
     def test_path_traversal_rejected(self):
         with self.assertRaises(PresetError):
@@ -55,13 +89,17 @@ class PresetTests(unittest.TestCase):
     def test_dsh_share_wrapper(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "wrap.json"
-            path.write_text(json.dumps({"format":"dsh-preset-enhance","preset":{"format":"sillytavern","data":self.preset}}))
+            path.write_text(json.dumps({
+                "format": "dsh-preset-enhance",
+                "preset": {"format": "sillytavern", "data": self.preset},
+            }))
             self.assertEqual(len(load_preset(path)["prompts"]), 4)
 
     def test_lorebook_warning(self):
-        c = dict(self.character, _has_character_book="true")
-        p = build_overlay(self.preset, character=c)
-        self.assertTrue(any("lorebook" in x.lower() for x in p.warnings))
+        character = dict(self.character, _has_character_book="true")
+        compiled = compile_preset(self.preset, character=character)
+        self.assertTrue(any("lorebook" in warning.lower() for warning in compiled.warnings))
+
 
 if __name__ == "__main__":
     unittest.main()

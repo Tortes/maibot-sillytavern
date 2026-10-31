@@ -1,7 +1,7 @@
 [project]
 name = "maibot-sillytavern"
-version = "0.1.0a1"
-description = "SillyTavern preset bridge for MaiBot"
+version = "0.2.0a1"
+description = "Role-aware SillyTavern preset bridge for MaiBot"
 requires-python = ">=3.12"
 license = "MIT"
 

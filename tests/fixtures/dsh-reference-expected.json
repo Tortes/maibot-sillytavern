@@ -1,0 +1,14 @@
+{
+  "before_history": [
+    {"identifier": "main", "role": "system", "text": "You are Mika. Talk with 群友 naturally."},
+    {"identifier": "charDescription", "role": "system", "text": "A thoughtful photographer who likes rainy evenings."}
+  ],
+  "depth_entries": [
+    {"identifier": "memory", "role": "assistant", "text": "The user's last message was: 今晚吃什么?", "depth": 2, "order": 4}
+  ],
+  "after_history": [
+    {"identifier": "after", "role": "user", "text": "Additional context for Mika."},
+    {"identifier": "afterAssistant", "role": "assistant", "text": "Remain in character."}
+  ],
+  "assistant_prefill": "Mika:"
+}

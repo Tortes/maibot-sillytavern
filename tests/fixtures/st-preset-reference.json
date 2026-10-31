@@ -1,0 +1,22 @@
+{
+  "prompts": [
+    {"identifier": "main", "name": "Main", "role": "system", "content": "You are {{char}}. Talk with {{user}} naturally."},
+    {"identifier": "charDescription", "name": "Character Description", "role": "system", "marker": true},
+    {"identifier": "chatHistory", "name": "Chat History", "role": "user", "marker": true},
+    {"identifier": "memory", "name": "Depth Memory", "role": "assistant", "content": "The user's last message was: {{lastUserMessage}}", "injection_position": 1, "injection_depth": 2, "injection_order": 4},
+    {"identifier": "after", "name": "After History", "role": "user", "content": "Additional context for {{char}}."},
+    {"identifier": "afterAssistant", "name": "Assistant Tail", "role": "assistant", "content": "Remain in character."}
+  ],
+  "prompt_order": [{
+    "character_id": 100001,
+    "order": [
+      {"identifier": "main", "enabled": true},
+      {"identifier": "charDescription", "enabled": true},
+      {"identifier": "chatHistory", "enabled": true},
+      {"identifier": "memory", "enabled": true},
+      {"identifier": "after", "enabled": true},
+      {"identifier": "afterAssistant", "enabled": true}
+    ]
+  }],
+  "assistant_prefill": "{{char}}:"
+}
