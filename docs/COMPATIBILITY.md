@@ -25,6 +25,28 @@ The bridge targets SillyTavern Chat Completion preset JSON. The implementation i
 | DSH Preset Enhance share wrapper | Supported | Reads nested preset.data |
 | prompt scripts / JavaScript / EJS | Not supported | Never executed |
 
+## World Info / Lorebook fields (v0.3)
+
+| Field / behavior | v0.3 | Notes |
+|---|---|---|
+| Standalone World Info JSON | Supported | `entries` may be an object keyed by UID or an array |
+| Embedded V2 `character_book` | Supported | Automatically loaded from the character card when enabled |
+| Primary keywords `key` | Supported | OR matching; plain text only |
+| Secondary keywords `keysecondary` | Supported | `selectiveLogic` 0–3 (AND ANY / NOT ALL / NOT ANY / AND ALL) |
+| Constant / disabled | Supported | `constant=true` always activates; `disable=true` suppresses |
+| Scan depth | Supported | Per-entry `scanDepth`, then book `scanDepth`, then binding default |
+| Case-sensitive / whole-word | Supported | Entry overrides book/binding defaults; whole-word is ASCII-boundary based |
+| Probability | Supported | Only applied when `useProbability=true` |
+| Recursive activation | Partial | Bounded per book; supports `recursiveScanning`, `delayUntilRecursion`, `excludeRecursion`, `preventRecursion` |
+| Character description/personality/scenario scan | Partial | Supports the corresponding per-entry match flags |
+| Position 0 / 1 | Supported | Before / after character definitions, approximated within the pre-history prompt block |
+| Position 4 (depth) | Supported | Maps role 0/1/2 to System/User/Assistant; depth is counted over MaiBot Context Items |
+| Character-card embedded book + external book | Supported | Both are loaded; each book is scanned independently |
+
+Not implemented: regex keyword evaluation (skipped for ReDoS safety), imported scripts/decorators, vectorized activation, inclusion-group scoring, sticky/cooldown/delay timed effects, min activations, Author's Note positions 2/3, Example Message positions 5/6, outlet position 7, persona-description scanning, character filters, and cross-book recursive activation.
+
+The Worldbook budget is a **character** limit (`worldbook_max_chars`), not ST's tokenizer-based token budget. The scan buffer contains recent textual UserMessageItem and AssistantMessageItem content, including the current user message when present; it excludes recognized MaiBot-generated request-tail prompts and does not scan image payloads or tool protocol items. The default scan depth is 2. Recursive activation is off by default unless the book's `recursiveScanning` is true or the binding option enables it, and is capped at 5 recursion passes.
+
 ## Macro subset
 
 | Macro | Behavior |
@@ -51,7 +73,7 @@ Not supported: local/global variable mutation, random/pick/roll, regex capture m
 - Before-history prompts are inserted after the leading system block.
 - After-history prompts are inserted immediately before the current-time final UserMessageItem when detected; otherwise they are appended.
 - Depth prompts are inserted relative to existing history Context Items.
-- MaiBot request-tail prompts are excluded from depth counting when recognizable by known prefixes or same-second timestamps.
+- MaiBot request-tail prompts are excluded from depth counting when recognizable by known text prefixes or explicit reply-reason/reference values.
 - A depth insertion that would split a tool-call logical turn is moved before that turn.
 - New items use unique item IDs, null logical_turn_id, ISO timestamps, and ordinary text parts.
 - Existing item payloads are copied without changing content; MaiBot can match unchanged snapshots and preserve provider replay fragments.
