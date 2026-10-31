@@ -266,11 +266,14 @@ def compile_preset(
         if total_chars + len(expanded) > max_chars:
             warnings.append(f"Prompt character budget exhausted; skipped: {identifier}")
             continue
-        position = prompt.get("injection_position", 0)
+        position = prompt.get("injection_position")
+        depth = prompt.get("injection_depth")
+        order = prompt.get("injection_order")
         compiled = CompiledPrompt(
             identifier=identifier, role=role, text=expanded.strip(),
-            injection_position=position, injection_depth=prompt.get("injection_depth", 4),
-            injection_order=prompt.get("injection_order", 100),
+            injection_position=0 if position is None else position,
+            injection_depth=4 if depth is None else depth,
+            injection_order=100 if order is None else order,
         )
         if position == 1:
             depth_entries.append(compiled)
