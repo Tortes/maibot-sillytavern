@@ -26,10 +26,10 @@ class PresetTests(unittest.TestCase):
         self.assertEqual(len(compiled.depth_entries), 1)
         self.assertEqual(len(compiled.after_history), 1)
         preview = build_overlay(self.preset, character=self.character, user_name="喵喵")
-        self.assertLess(preview.text.index("你正在群聊中"), preview.text.index("阿澄性格"))
+        self.assertLess(preview.text.index("你正在群聊中"), preview.text.index("阿澄是住在上海"))
         self.assertIn("冷幽默", preview.text)
         self.assertIn("摄影", preview.text)
-        self.assertIn("对 喵喵", preview.text)
+        self.assertIn("本轮交流对象是 喵喵", preview.text)
         self.assertNotIn("{{", preview.text)
 
     def test_disabled_prompt_skipped(self):
@@ -120,7 +120,7 @@ class PresetTests(unittest.TestCase):
                 "format": "dsh-preset-enhance",
                 "preset": {"format": "sillytavern", "data": self.preset},
             }))
-            self.assertEqual(len(load_preset(path)["prompts"]), 4)
+            self.assertEqual(len(load_preset(path)["prompts"]), 8)
 
     def test_lorebook_warning(self):
         character = dict(self.character, _has_character_book="true")
