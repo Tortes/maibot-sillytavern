@@ -26,7 +26,7 @@ def base_items():
         text_item("SystemMessageItem", "sys", "MaiBot host prompt"),
         text_item("UserMessageItem", "u1", "昨晚看了电影"),
         text_item("AssistantMessageItem", "a1", "哪一部？"),
-        text_item("UserMessageItem", "u2", "沙丘"),
+        text_item("UserMessageItem", "u2", "沙丘", now),
         text_item("UserMessageItem", "tail-style", "你的说话风格可以尝试：自然简短", now),
         text_item("UserMessageItem", "final", "时间：2026-10-31 13:57:00", now),
         text_item("UserMessageItem", "tail-chat", "当前聊天额外注意事项：优先自然交流", now),
@@ -56,7 +56,7 @@ class ContextTests(unittest.TestCase):
         }
         return compile_preset(preset)
 
-    def test_history_macros_ignore_host_prompt_and_request_tail(self):
+    def test_history_macros_ignore_host_prompt_and_preserve_same_second_user_message(self):
         values = extract_history_macro_values(base_items())
         self.assertEqual(values["lastmessage"], "沙丘")
         self.assertEqual(values["lastusermessage"], "沙丘")
