@@ -37,7 +37,7 @@ class HookTests(unittest.TestCase):
             {
                 "item_type": "UserMessageItem",
                 "meta": {"item_id": "history", "logical_turn_id": None, "timestamp": "2026-10-30T00:01:00+00:00"},
-                "parts": [{"type": "text", "text": "以前聊过摄影"}],
+                "parts": [{"type": "text", "text": "以前聊过摄影，也提到暗房"}],
             },
             {
                 "item_type": "UserMessageItem",
@@ -71,6 +71,7 @@ class HookTests(unittest.TestCase):
         ]
         self.assertIn("慢热、独立、情绪稳定", "\n".join(texts))
         self.assertIn("《沙丘》的故事核心舞台是厄拉科斯", "\n".join(texts))
+        self.assertIn("阿澄在家里有一间小暗房", "\n".join(texts))
         self.assertIn("厄拉科斯是一颗极端干旱的沙漠星球", "\n".join(texts))
         self.assertIn("沙虫能够感知沙面的节奏性震动", "\n".join(texts))
         self.assertEqual(output[0]["meta"]["item_id"], "sys")
