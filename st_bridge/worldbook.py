@@ -72,7 +72,17 @@ def normalize_worldbook(data: Mapping[str, Any], *, source: str = "worldbook") -
     if len(rows) > MAX_WORLD_BOOK_ENTRIES:
         raise PresetError(f"{source}: too many entries (max {MAX_WORLD_BOOK_ENTRIES})")
 
+    for field in ("recursiveScanning", "caseSensitive", "matchWholeWords"):
+        if field in data and data[field] is not None and not isinstance(data[field], bool):
+            raise PresetError(f"{source}: {field} must be boolean")
+    if data.get("maxRecursionSteps") is not None and (
+        type(data["maxRecursionSteps"]) is not int
+        or not 0 <= data["maxRecursionSteps"] <= MAX_RECURSION_STEPS
+    ):
+        raise PresetError(f"{source}: maxRecursionSteps is out of range")
+
     entries: list[dict[str, Any]] = []
+    seen_uids: set[str] = set()
     total_chars = 0
     for key, raw in rows:
         if not isinstance(raw, dict):
@@ -111,6 +121,8 @@ def normalize_worldbook(data: Mapping[str, Any], *, source: str = "worldbook") -
             value = entry.get(field, default)
             if value is None and field == "scanDepth":
                 continue
+            if value is None:
+                value = default
             if type(value) is not int or not minimum <= value <= maximum:
                 raise PresetError(f"{source}: entry {key!r} has invalid {field}")
             entry[field] = value
@@ -139,6 +151,9 @@ def normalize_worldbook(data: Mapping[str, Any], *, source: str = "worldbook") -
         else:
             raise PresetError(f"{source}: entry {key!r} has unsupported role")
         entry["_source_uid"] = str(entry.get("uid", key))
+        if entry["_source_uid"] in seen_uids:
+            raise PresetError(f"{source}: duplicate entry uid {entry['_source_uid']!r}")
+        seen_uids.add(entry["_source_uid"])
         entry["_source"] = str(data.get("name") or source)
         entries.append(entry)
 
@@ -327,7 +342,7 @@ def compile_worldbooks(
         book_recursive = book.get("recursiveScanning")
         use_recursive = bool(book_recursive) if isinstance(book_recursive, bool) else recursive
         book_steps = max_recursion_steps
-        if isinstance(book.get("maxRecursionSteps"), int):
+        if type(book.get("maxRecursionSteps")) is int:
             book_steps = max(0, min(book["maxRecursionSteps"], MAX_RECURSION_STEPS))
         if not use_recursive:
             book_steps = 0
