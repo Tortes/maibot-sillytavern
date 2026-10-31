@@ -137,12 +137,16 @@ def normalize_worldbook(data: Mapping[str, Any], *, source: str = "worldbook") -
         entry["probability"] = 100 if probability is None else float(probability)
 
         delay = entry.get("delayUntilRecursion", False)
+        if delay is None:
+            delay = False
         if not isinstance(delay, (bool, int)) or isinstance(delay, float):
             raise PresetError(f"{source}: entry {key!r} delayUntilRecursion must be boolean or integer")
         if isinstance(delay, int) and not isinstance(delay, bool) and not 0 <= delay <= MAX_RECURSION_STEPS:
             raise PresetError(f"{source}: entry {key!r} delayUntilRecursion is out of range")
 
         role = entry.get("role", 0)
+        if role is None:
+            role = 0
         if isinstance(role, str):
             if role.lower() not in ("system", "user", "assistant"):
                 raise PresetError(f"{source}: entry {key!r} has unsupported role")
@@ -355,7 +359,8 @@ def compile_worldbooks(
             if entry.get("group"):
                 warnings.append(f"{source} entry {entry['_source_uid']}: inclusion-group scoring is not implemented")
             if entry.get("vectorized"):
-                warnings.append(f"{source} entry {entry['_source_uid']}: vectorized activation is not implemented")
+                warnings.append(f"{source} entry {entry['_source_uid']}: vectorized activation is not implemented; entry skipped")
+                continue
             if entry.get("position", 0) not in (
                 POSITION_BEFORE_CHARACTER, POSITION_AFTER_CHARACTER, POSITION_AT_DEPTH,
             ):
