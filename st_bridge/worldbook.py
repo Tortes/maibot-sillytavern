@@ -304,7 +304,6 @@ def compile_worldbooks(
 
     messages = extract_scan_messages(items, reply_reason=reply_reason, reply_reference=reply_reference)
     warnings: list[str] = []
-    candidates: list[tuple[dict[str, Any], int, str]] = []
     before_entries: list[CompiledPrompt] = []
     after_entries: list[CompiledPrompt] = []
     depth_entries: list[CompiledPrompt] = []
@@ -318,6 +317,7 @@ def compile_worldbooks(
             warnings.append(str(exc))
             continue
         book_entries = book["_normalized_entries"]
+        candidates: list[tuple[dict[str, Any], int, str]] = []
         book_scan_depth = book.get("scanDepth")
         if book_scan_depth is not None and (
             type(book_scan_depth) is not int or not 0 <= book_scan_depth <= MAX_SCAN_DEPTH
