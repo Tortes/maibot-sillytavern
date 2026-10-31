@@ -106,7 +106,6 @@ class ContextTests(unittest.TestCase):
         compiled = compile_preset(preset)
         result = apply_compiled_preset(items, compiled).items
         ids = [item["meta"]["item_id"] for item in result]
-        self.assertLess(ids.index("stpreset:" + ids[1].split("stpreset:")[-1]) if False else 0, len(ids))
         depth_index = next(i for i, item in enumerate(result) if item.get("parts", [{}])[0].get("text") == "深度设定")
         self.assertLess(depth_index, ids.index("a-call"))
         self.assertLess(ids.index("call"), ids.index("output"))
