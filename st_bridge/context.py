@@ -146,11 +146,12 @@ def _new_prefill(text: str) -> dict[str, Any]:
 def extract_history_macro_values(
     items: list[dict[str, Any]], *, reply_reason: str = "", reply_reference: str = "",
 ) -> dict[str, str]:
-    anchor = _find_current_prompt_anchor(items)
     user_text = ""
     assistant_text = ""
     last_text = ""
-    for item in reversed(items[:anchor]):
+    # The actual current user message may follow MaiBot's current-time tail item.
+    # Scan the full list and filter generated tail prompts by their text markers.
+    for item in reversed(items):
         if _is_generated_tail(item, reply_reason=reply_reason, reply_reference=reply_reference):
             continue
         text = _item_text(item).strip()

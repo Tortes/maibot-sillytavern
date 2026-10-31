@@ -1,9 +1,9 @@
 {
   "manifest_version": 2,
   "id": "tortes.maibot-sillytavern",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "name": "MaiBot SillyTavern Preset Bridge",
-  "description": "将 SillyTavern RP 预设、角色卡提示词编排接入 MaiBot Replyer。",
+  "description": "将 SillyTavern RP 预设、角色卡和世界书动态注入 MaiBot Replyer。",
   "author": {
     "name": "Tortes",
     "url": "https://github.com/Tortes"

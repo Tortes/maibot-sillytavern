@@ -122,11 +122,5 @@ class PresetTests(unittest.TestCase):
             }))
             self.assertEqual(len(load_preset(path)["prompts"]), 8)
 
-    def test_lorebook_warning(self):
-        character = dict(self.character, _has_character_book="true")
-        compiled = compile_preset(self.preset, character=character)
-        self.assertTrue(any("lorebook" in warning.lower() for warning in compiled.warnings))
-
-
 if __name__ == "__main__":
     unittest.main()

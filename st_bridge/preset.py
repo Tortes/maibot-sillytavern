@@ -134,15 +134,18 @@ def load_preset(path: Path) -> dict[str, Any]:
     return data
 
 
-def load_character(path: Path) -> dict[str, str]:
+def load_character(path: Path) -> dict[str, Any]:
     raw = _read_json(path)
     source = raw.get("data", raw)
     if not isinstance(source, dict):
         raise PresetError("Character data must be an object")
     keys = ("name", "description", "personality", "scenario", "mes_example")
-    out = {key: str(source.get(key) or "") for key in keys}
-    if source.get("character_book") or raw.get("character_book"):
-        out["_has_character_book"] = "true"
+    out: dict[str, Any] = {key: str(source.get(key) or "") for key in keys}
+    character_book = source.get("character_book") or raw.get("character_book")
+    if character_book is not None:
+        if not isinstance(character_book, dict):
+            raise PresetError("Character book must be an object")
+        out["_character_book"] = character_book
     return out
 
 
@@ -208,8 +211,6 @@ def compile_preset(
     if markers:
         marker_values.update({str(k): str(v) for k, v in markers.items()})
     warnings: list[str] = []
-    if char.get("_has_character_book"):
-        warnings.append("Character book exists but lorebook matching is not implemented")
     extensions = preset.get("extensions") or {}
     if isinstance(extensions, dict) and extensions.get("regex_scripts"):
         warnings.append("regex_scripts are preserved as data, but never executed")
