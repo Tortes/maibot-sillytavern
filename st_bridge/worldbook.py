@@ -305,6 +305,11 @@ def compile_worldbooks(
     messages = extract_scan_messages(items, reply_reason=reply_reason, reply_reference=reply_reference)
     warnings: list[str] = []
     candidates: list[tuple[dict[str, Any], int, str]] = []
+    before_entries: list[CompiledPrompt] = []
+    after_entries: list[CompiledPrompt] = []
+    depth_entries: list[CompiledPrompt] = []
+    included: list[str] = []
+    total_used_chars = 0
     for book_index, raw_book in enumerate(books):
         source = str(raw_book.get("name") or f"worldbook-{book_index + 1}")
         try:
@@ -334,6 +339,14 @@ def compile_worldbooks(
                 warnings.append(f"{source} entry {entry['_source_uid']}: inclusion-group scoring is not implemented")
             if entry.get("vectorized"):
                 warnings.append(f"{source} entry {entry['_source_uid']}: vectorized activation is not implemented")
+            if entry.get("position", 0) not in (
+                POSITION_BEFORE_CHARACTER, POSITION_AFTER_CHARACTER, POSITION_AT_DEPTH,
+            ):
+                warnings.append(
+                    f"{source} entry {entry['_source_uid']}: ST position {entry.get('position')} "
+                    "is not supported yet; entry was not injected"
+                )
+                continue
             candidates.append((entry, entry_index, source))
 
         activated: dict[tuple[str, str], dict[str, Any]] = {}
@@ -399,7 +412,6 @@ def compile_worldbooks(
             ),
         )
         selected_entries: list[dict[str, Any]] = []
-        used_chars = 0
         for _, entry in ordered_for_budget:
             content, error = _expand(str(entry.get("content") or ""), macro_values)
             if error:
@@ -407,10 +419,10 @@ def compile_worldbooks(
                 continue
             if not content or not content.strip():
                 continue
-            if used_chars + len(content) > max_chars:
-                warnings.append(f"{source}: worldbook character budget exhausted; skipped entry {entry['_source_uid']}")
+            if total_used_chars + len(content) > max_chars:
+                warnings.append(f"Worldbook character budget exhausted; skipped entry {entry['_source_uid']}")
                 continue
-            used_chars += len(content)
+            total_used_chars += len(content)
             entry["_compiled_content"] = content.strip()
             selected_entries.append(entry)
 
@@ -437,11 +449,6 @@ def compile_worldbooks(
                     injection_position=1, injection_depth=int(entry.get("depth", 4)),
                     injection_order=int(entry.get("order", 100)),
                 ))
-            else:
-                warnings.append(
-                    f"{source} entry {uid}: ST position {position} is not supported yet; entry was not injected"
-                )
-                continue
             included.append(identifier)
 
     return WorldbookResult(
