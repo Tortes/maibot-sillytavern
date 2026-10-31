@@ -90,7 +90,7 @@ class WorldbookTests(unittest.TestCase):
         data = book([
             entry(1, key=["旧地点"], content="旧消息命中", scanDepth=3),
             entry(2, key=["旧地点"], content="不应命中", scanDepth=1),
-            entry(3, key=["新地点"], content="新消息命中", scanDepth=1),
+            entry(3, key=["新地点"], content="新消息命中", scanDepth=2),
         ])
         messages = [
             item("UserMessageItem", "我们去了旧地点", "u1"),
