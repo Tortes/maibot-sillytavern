@@ -156,7 +156,8 @@ def _new_prefill(text: str) -> dict[str, Any]:
     return _new_context_item(prompt)
 
 
-def _history_macro_values(items: list[dict[str, Any]], anchor: int) -> dict[str, str]:
+def extract_history_macro_values(items: list[dict[str, Any]]) -> dict[str, str]:
+    anchor = _find_current_prompt_anchor(items)
     user_text = ""
     assistant_text = ""
     last_text = ""
@@ -235,13 +236,13 @@ def apply_compiled_preset(
         else:
             target = history_indices[slot]
         target = _safe_tool_boundary(base, target)
-        schedule(target, prompt, 1 + prompt.injection_order)
+        schedule(target, prompt, 1)
 
     warnings = list(compiled.warnings)
     if compiled.assistant_prefill:
         if allow_assistant_prefill:
             new_item = _new_prefill(compiled.assistant_prefill)
-            insertions.setdefault(len(base), []).append((10**9, sequence, new_item))
+            insertions.setdefault(len(base), []).append((3, sequence, new_item))
             inserted.append("assistant_prefill")
         else:
             warnings.append("assistant_prefill present but disabled for this binding")
@@ -256,4 +257,4 @@ def apply_compiled_preset(
     return AppliedContext(items=output, warnings=tuple(warnings), inserted=tuple(inserted))
 
 
-__all__ = ["AppliedContext", "apply_compiled_preset"]
+__all__ = ["AppliedContext", "apply_compiled_preset", "extract_history_macro_values"]
