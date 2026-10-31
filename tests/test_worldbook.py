@@ -246,6 +246,29 @@ class WorldbookTests(unittest.TestCase):
         self.assertFalse(result.before_character)
         self.assertTrue(any("regex keyword skipped for safety" in warning for warning in result.warnings))
 
+    def test_nullable_st_entry_defaults_are_normalized(self):
+        data = book([entry(
+            1, key=["沙丘"], content="nullable defaults", position=None, depth=None,
+            order=None, selectiveLogic=None, role=None, delayUntilRecursion=None,
+        )])
+        normalized = normalize_worldbook(data)["_normalized_entries"][0]
+        self.assertEqual(normalized["position"], 0)
+        self.assertEqual(normalized["depth"], 4)
+        self.assertEqual(normalized["order"], 100)
+        self.assertEqual(normalized["selectiveLogic"], 0)
+        self.assertEqual(normalized["_role"], "system")
+        self.assertFalse(normalized["delayUntilRecursion"])
+
+    def test_vectorized_entry_is_not_misinterpreted_as_keyword_entry(self):
+        data = book([entry(
+            1, key=["沙丘"], content="vectorized-only", vectorized=True,
+        )])
+        result = compile_worldbooks(
+            [data], [item("UserMessageItem", "沙丘", "u1")],
+        )
+        self.assertFalse(result.before_character)
+        self.assertTrue(any("vectorized activation is not implemented" in warning for warning in result.warnings))
+
     def test_invalid_worldbook_shape_is_rejected(self):
         with self.assertRaises(PresetError):
             normalize_worldbook({"name": "bad", "entries": "not-an-object"})
