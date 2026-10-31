@@ -60,7 +60,7 @@ class HookTests(unittest.TestCase):
             for part in item.get("parts", [])
             if part.get("type") == "text"
         ]
-        self.assertIn("阿澄性格慢热", "\n".join(texts))
+        self.assertIn("慢热、独立、情绪稳定", "\n".join(texts))
         self.assertEqual(output[0]["meta"]["item_id"], "sys")
         self.assertEqual(output[-1]["meta"]["item_id"], "final")
         self.assertEqual(items[0]["parts"][0]["text"], "MaiBot host system prompt")
