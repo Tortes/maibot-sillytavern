@@ -45,7 +45,7 @@ The bridge targets SillyTavern Chat Completion preset JSON. The implementation i
 
 Not implemented: regex keyword evaluation (skipped for ReDoS safety), imported scripts/decorators, vectorized activation, inclusion-group scoring, sticky/cooldown/delay timed effects, min activations, Author's Note positions 2/3, Example Message positions 5/6, outlet position 7, persona-description scanning, character filters, and cross-book recursive activation.
 
-The Worldbook budget is a **character** limit (`worldbook_max_chars`), not ST's tokenizer-based token budget. The scan buffer contains recent textual UserMessageItem and AssistantMessageItem content, including the current user message when present; it excludes recognized MaiBot-generated request-tail prompts and does not scan image payloads or tool protocol items. The default scan depth is 2. Recursive activation is off by default unless the book's `recursiveScanning` is true or the binding option enables it, and is capped at 5 recursion passes.
+The Worldbook budget is a **character** limit (`worldbook_max_chars`), not ST's tokenizer-based token budget. The scan buffer contains recent textual UserMessageItem and AssistantMessageItem content, including the current user message when present; it excludes recognized MaiBot-generated request-tail prompts and does not scan image payloads or tool protocol items. The default scan depth is 2. Recursive activation is off by default. An explicit book-level `recursiveScanning` value takes precedence; otherwise the binding setting is used. Recursion is capped at 5 passes.
 
 ## Macro subset
 
